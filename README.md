@@ -1,5 +1,83 @@
-# iot-nxpimxa71ch-c
-Watson IoT Platform C Client Library for NXP i.MX Platform with A71CH secured element
+# Watson IoT Platform C Client Library 
+## for *NXP i.MX* Platform with *IC A71CH* Secured Element
 
-NOTE: This project will be published soon.
+This project contains C client library source that can be built and installed on devices
+installed with *NXP i.MX* operarting system, to interact with  the IBM Watson Internet of 
+Things Platform. The library is customized to support 
+*[NXP A71CH](https://www.nxp.com/products/identification-and-security/authentication/plug-and-trust-the-fast-easy-way-to-deploy-secure-iot-connections:A71CH)* secured element.
+
+Some of the source code in this client library is from the IBM Watson Internet of Things
+[Embedded C Client library](https://github.com/ibm-watson-iot/iot-embeddedc).
+
+
+## Build requirements / compilation
+
+The client code code can be built only on *NXP i.MX* Platform. The code is dependent on
+[Paho MQTT C Client](http://www.eclipse.org/paho/clients/c/) version 1.2.0. The build
+script will automatically download dependent packages, so internet access is a must
+during build process.
+
+## Download C Client Library Source
+
+Use the following command to download the C Client Library source:
+
+```
+git clone https://github.com/ibm-watson-iot/iot-nxpimxa71ch-c
+```
+
+If git is not available on the system, use curl command to download project zip file:
+
+```
+curl -LJO https://github.com/ibm-watson-iot/iot-nxpimxa71ch-c/archive/master.zip
+unzip iot-nxpimxa71ch-c.master.zip
+mv iot-nxpimxa71ch-c.master iot-nxpimxa71ch-c
+```
+
+## Build and install Steps
+
+Use the following commands to setup build tree and build C Client library and samples:
+
+```
+cd iot-nxpimxa71ch-c
+make build
+make install
+```
+
+Install step will install client library, header files and sample device clients in the
+following location:
+
+```
+/usr/local/lib - Client libraries
+/usr/local/include - Header files for device client build
+/opt/iotnxpimxclient/bin - Device client sample binaries
+/opt/iotnxpimxclient/config - Configuration files for Device client samples
+/opt/iotnxpimxclient/certs - Certificate used by Device client samples
+/usr/local/lib and /usr/local/include directories respectively.
+```
+
+## Test client connectivity
+
+Before you can test device connectivity, you need to register for IBM Cloud account and create
+an instance of the Watson Internet of Things Platform service. Refer to the following link 
+for [details](https://console.bluemix.net/docs/services/IoT/index.html#gettingstartedtemplate).
+
+### Test connectivity with *Quickstart*
+
+Connect to *[quickstart](https://quickstart.internetofthings.ibmcloud.com/?cm_mc_uid=71367544061615028292336&cm_mc_sid_50200000=59540641520868549701#/)* organization of IBM Watson Internet of Things Platform.
+
+On Quickstart page, specify device id as 70028004006194989053 and click *Go* button.
+
+On Device system, run the following commands:
+
+```
+cd /opt/iotnxpimxclient/bin
+./helloWorld --config /opt/iotnxpimxclient/config/device_quickstart.cfg
+```
+The device will get connected and on Quickstart page will start showing incoming sensor data from
+the device.
+
+### Test connectivity with *your own organization*
+
+* TBA *
+
 
