@@ -61,10 +61,11 @@ following location:
 to the IBM Watson™ IoT Platform. 
 
 1. Connect to *[quickstart](https://quickstart.internetofthings.ibmcloud.com/?cm_mc_uid=71367544061615028292336&cm_mc_sid_50200000=59540641520868549701#/)* organization of IBM Watson Internet of Things Platform.
-..* Select "I accept IBM's Terms of Use"
-..* Specify a device id to test connectivity. e.g. *testID11223344556677*. Note that this is not the
-actual device ID stored in IC A71CH Secure Element.
-..* Click *Go* button.
+
+* Select "I accept IBM's Terms of Use"
+* Specify a device id to test connectivity. e.g. *70028004006194989053*. Note that this device ID 
+need not be the actual device ID stored in IC A71CH Secure Element. 
+* Click *Go* button.
 
 2. On Device system, run the following commands:
 
@@ -72,8 +73,8 @@ actual device ID stored in IC A71CH Secure Element.
 cd /opt/iotnxpimxclient/bin
 ./helloWorld --config /opt/iotnxpimxclient/config/device_quickstart.cfg
 ```
-The device will get connected to *Quickstart* and the Quickstart page will start showing 
-incoming sensor data from the device.
+The test device will get connected to *Quickstart* and the Quickstart page will start showing 
+incoming simulated sensor data from the test device.
 
 
 ## Test client connectivity to *your own organization*
