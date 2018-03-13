@@ -1,5 +1,5 @@
 # Watson IoT Platform C Client Library 
-## for *NXP i.MX* Platform with *IC A71CH* Secured Element
+## For *NXP i.MX* Platform with *IC A71CH* Secure Element
 
 This project contains C client library source that can be built and installed on devices
 installed with *NXP i.MX* operating system, to interact with  the IBM Watson Internet of 
