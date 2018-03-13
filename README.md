@@ -79,8 +79,8 @@ incoming sensor data from the device.
 ## Test client connectivity to *your own organization*
 
 Before you can test device connectivity, you need to register for IBM Cloud account and create
-an instance of the Watson Internet of Things Platform service. Refer to the following link 
-for [details](https://console.bluemix.net/docs/services/IoT/index.html#gettingstartedtemplate).
+an instance of the Watson Internet of Things Platform service. For registration details, 
+[click here.](https://console.bluemix.net/docs/services/IoT/index.html#gettingstartedtemplate).
 
 
 * Work in progress - details will be added soon *
