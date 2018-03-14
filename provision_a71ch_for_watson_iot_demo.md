@@ -6,7 +6,7 @@ IBM Watson IoT Platform, for demo or prototype developemnt.
 
 ## 1 Prepare your board
 
-Follow the instructions in the [NXP A71CH Product Support Package (PSP)](https://www.nxp.com/products/identification-and-security/authentication/plug-and-trust-the-fast-easy-way-to-deploy-secure-iot-connections:A71CH) 
+Follow the instructions in the [NXP A71CH Product Support Package (PSP)](https://www.nxp.com/A71CH)
 to connect the boards and, prepare and load the software.
 
 
@@ -22,7 +22,7 @@ to inject key pair and client certificate.
 of the client certificate's Common Name.
 
 Note that all these tools come pre-installed on the SD card image made available for 
-the MCIMX6UL-EVKB board on the [A71CH website](www.nxp.com/A71CH).
+the MCIMX6UL-EVKB board on the [A71CH website](https://www.nxp.com/A71CH).
 
 ### 2.1 Introduction
 
