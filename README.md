@@ -99,6 +99,15 @@ incoming simulated sensor data from the test device.
 Use the following steps to register device type, device ID and CA certificate with Watson IoT
 Platform, configure device and connect to Watson IoT Platform:
 
+### Register Certificate Authority
+
+Register CA certificate created in Step 2 of A71CH provisioning process described in 
+[Provisioning A71CH](./provision_a71ch_for_watson_iot_demo.md) document, with Watson IoT Platform.
+Follow the instructions in the following section of Configuring certificates documentation:
+
+[Registering Certificate Authority (CA) certificates for device authentication](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_certificates.html#set_up_certificates)
+
+
 ### Register Device Type and Device:
 
 Follow Step 1 described in the following link to register NXP-A71CH generic device type 
@@ -109,14 +118,6 @@ with Watson IoT Platform:
 
 [Step 1: Registering your device with Watson IoT Platform](https://console.bluemix.net/docs/services/IoT/iotplatform_task.html#iotplatform_task)
 
-
-### Register Certificate Authority
-
-Register CA certificate created in Step 2 of A71CH provisioning process described in 
-[Provisioning A71CH](./provision_a71ch_for_watson_iot_demo.md) document, with Watson IoT Platform.
-Follow the instructions in the following section of Configuring certificates documentation:
-
-[Registering Certificate Authority (CA) certificates for device authentication](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_certificates.html#set_up_certificates)
 
 ### Configure device
 
