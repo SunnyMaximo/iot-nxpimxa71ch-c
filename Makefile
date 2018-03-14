@@ -19,31 +19,31 @@
 # The Makefile is updated to include Watson IoT Platform C client library functions. 
 # 
 
-current_dir := $(shell pwd)
-parent_dir := $(shell dirname ${current_dir})
-
 SHELL = /bin/sh
 .PHONY: setup, build, clean, install, uninstall
+
+CLIENTDIR := /opt/iotnxpimxclient/
 
 all: setup build install
 
 build: setup
-	@echo "Watson IoT Platform client based on Paho MQTT c client, for NXP i.MX Distro."
-	cd paho.mqtt.c-1.2.0; make
+	@echo "Build Watson IoT Platform client based on Paho MQTT c client, for NXP i.MX Distro."
+	make -C paho.mqtt.c-1.2.0 CLIENTDIR=$(CLIENTDIR)
 
-clean:
-	test -d paho.mqtt.c-1.2.0 && (cd paho.mqtt.c-1.2.0; make -i uninstall)
-	-rm -rf paho.mqtt.c-1.2.0
-	-rm -rf download
-	-rm -f .setup_done
-
+clean: uninstall
+	-rm -rf paho.mqtt.c-1.2.0 download .setup_done
 setup:
 	@echo "Watson IoT Platform client based on Paho MQTT c client, for NXP i.MX Distro.: Build setup"
 	@[ -f ./.setup_done ] ||  ./setup.sh
 
 install: build
-	cd paho.mqtt.c-1.2.0; make install
+	@echo "Install packages"
+	@mkdir -p /usr/local/bin
+	@mkdir -p /usr/local/lib
+	@mkdir -p /usr/local/include
+	@if [ -d "paho.mqtt.c-1.2.0" ]; then make -C paho.mqtt.c-1.2.0 install CLIENTDIR=$(CLIENTDIR); fi
 
 uninstall:
-	cd paho.mqtt.c-1.2.0; make uninstall
+	@echo "Uninstall packages"
+	@if [ -d "paho.mqtt.c-1.2.0" ]; then make -i -C paho.mqtt.c-1.2.0 uninstall CLIENTDIR=$(CLIENTDIR); fi
 

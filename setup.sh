@@ -129,19 +129,19 @@ install-iotf: build
 	\$(INSTALL_DATA) \${wiotp_srcdir}/deviceclient.h \$(DESTDIR)\${includedir}
 	\$(INSTALL_DATA) \${wiotp_srcdir}/gatewayclient.h \$(DESTDIR)\${includedir}
 	\$(INSTALL_DATA) \${wiotp_srcdir}/iotf_utils.h \$(DESTDIR)\${includedir}
-	mkdir -p /opt/iotnxpimxclient/bin
-	mkdir -p /opt/iotnxpimxclient/config
-	mkdir -p /opt/iotnxpimxclient/certs
-	\$(INSTALL_PROGRAM) \${blddir}/samples/helloWorld /opt/iotnxpimxclient/bin/.
-	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.pem /opt/iotnxpimxclient/certs/.
-	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.cfg /opt/iotnxpimxclient/config/.
+	mkdir -p \$(CLIENTDIR)bin
+	mkdir -p \$(CLIENTDIR)config
+	mkdir -p \$(CLIENTDIR)certs
+	\$(INSTALL_PROGRAM) \${blddir}/samples/helloWorld \$(CLIENTDIR)bin/.
+	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.pem \$(CLIENTDIR)certs/.
+	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.cfg \$(CLIENTDIR)config/.
 
 uninstall-iotf:
 	-rm \$(DESTDIR)\${includedir}/iotfclient.h
 	-rm \$(DESTDIR)\${includedir}/deviceclient.h
 	-rm \$(DESTDIR)\${includedir}/gatewayclient.h
 	-rm \$(DESTDIR)\${includedir}/iotf_utils.h
-	-rm -rf /opt/iotnxpimxclient
+	-rm \$(CLIENTDIR)bin/helloWorld
 
 print-%  : ; @echo \$* = \$(\$*)
 
