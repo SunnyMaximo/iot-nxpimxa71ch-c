@@ -31,7 +31,8 @@ how to inject the device credentials into the A71CH.
  
 To provision an A71CH miniPCB so it contains Watson IoT credentials:
 - Follow the instructions under (2.2) to create a demo CA
-- Use the bash shell script 'provisionA71CH_WatsonIoT.sh' to execute the different steps outlined here starting from section 2.3.  
+- Use the bash shell script '[provisionA71CH_WatsonIoT.sh](https://github.com/ibm-watson-iot/iot-nxpimxa71ch-c/blob/master/samples/provisionA71CH_WatsonIoT.sh)' to execute 
+the different steps outlined here starting from section 2.3.  
 
 To use the script copy it onto the embedded file system of the MCIMX6UL-EVKB board in directory /home/root/tools. Ensure the script has execution rights set and invoke it from the /home/root/tools directory.
 
@@ -64,7 +65,7 @@ The steps detailed out in subsections 2.3 until 2.6 are covered by bash shell sc
 
 The following command captures the correct byte's from the UID that will become part of the certificates common name into the environment variable SE_UID
 
-    export SE_UID="$(${A71CH_CONFIG_TOOL} info device | grep -e "\([0-9][0-9]:\)\{17,\}" | awk 'BEGIN {FS=":"}; {printf $3$4$9$10$11$12$13$14$15$16}')"
+    export SE_UID="$(./a71chConfig_i2c_imx info device | grep -e "\([0-9][0-9]:\)\{17,\}" | awk 'BEGIN {FS=":"}; {printf $3$4$9$10$11$12$13$14$15$16}')"
     echo "SE_UID: ${SE_UID}"
 
 Note down your device UID in order to register the device later into the IBM Watson IoT Platform 
