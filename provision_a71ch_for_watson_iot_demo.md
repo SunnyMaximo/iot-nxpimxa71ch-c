@@ -37,7 +37,7 @@ To use the script copy it onto the embedded file system of the MCIMX6UL-EVKB boa
 
 ### 2.2 Create a Root CA keypair and certificate once
 
-For the purpose of the demo ensure you only create Root CA keypair and certificate once. In case you already have a Root CA available you can skip this step.
+For the purpose of the demo ensure you only create Root CA keypair and certificate once. In case you already have a Root CA keypair and certificate available, you can skip this step.
 	
 In this step we will create a Root CA keypair (CACertificate_ECC.key) and a Root CA certificate (CACertificate_ECC.crt). 
 The keypair will be created on the NIST-P256 ECC Curve.
