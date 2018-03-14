@@ -15,7 +15,7 @@ combination of *MCIMX6UL-EVKB* and *A71CH* boards.
 
 You must prepare and provision the board for building client code and connecting client 
 to IBM Watson IoT Platform. Refer to the following documentation for 
-[Provisoing A71CH](./provision_a71ch_for_watson_iot_demo.md) process.
+[Provisioning A71CH](./provision_a71ch_for_watson_iot_demo.md) process.
 Note that the tools needed to build the client library and samples, 
 come pre-installed on the SD card image for *MCIMX6UL-EVKB* board.
 
@@ -113,7 +113,7 @@ with Watson IoT Platform:
 ### Register Certificate Authority
 
 Register CA certificate created in Step 2 of A71CH provisioning process described in 
-[Provisoing A71CH](./provision_a71ch_for_watson_iot_demo.md) document, with Watson IoT Platform.
+[Provisioning A71CH](./provision_a71ch_for_watson_iot_demo.md) document, with Watson IoT Platform.
 Follow the instructions in the following section of Configuring certificates documentation:
 
 [Registering Certificate Authority (CA) certificates for device authentication](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_certificates.html#set_up_certificates)

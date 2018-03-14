@@ -1,8 +1,8 @@
 # Provision A71CH 
 ## For IBM Watson IoT Platform Demo
 
-This document describes *NXP A71CH* provisiong process required for connecting to
-IBM Watson IoT Platform, for demo or ptototype developemnt.
+This document describes *NXP A71CH* provisioning process required for connecting to
+IBM Watson IoT Platform, for demo or prototype developemnt.
 
 ## 1 Prepare your board
 
@@ -12,10 +12,10 @@ to connect the boards and, prepare and load the software.
 
 ## 2 Credential preparation and injection
 
-To prepare and inject the credentials for the A71CH, ensure you have a working combination of *MCIMX6UL-EVKB* 
+To prepare and inject the Credentials for the A71CH, ensure you have a working combination of *MCIMX6UL-EVKB* 
 and *A71CH* boards. The following tools are used in this step:
 
-* OpenSSL (openssl) is used to create the credentials.
+* OpenSSL (openssl) is used to create the Credentials.
 * The A71CH Configure tool (a71chConfig_i2c_imx) is used to retrieve the UID from the A71CH and 
 to inject key pair and client certificate. 
 * The unix command line utilities grep and awk are used to extract bytes forming the UID part 
@@ -54,6 +54,9 @@ To create the CA certificate, execute the following commands. Note that you can 
     export ROOT_CA_CN_ECC="NXP IMX-A71CH demo rootCA v E"
     openssl req -x509 -new -nodes -key CACertificate_ECC.key -sha256 -days 3650 -out CACertificate_ECC.crt -subj "/CN=${ROOT_CA_CN_ECC}"
 
+Store your *CACertificate_ECC.crt* in order to upload the certificate later into 
+the IBM Watson IoT Platform in step [Register Certificate Authority](./README.me#user-content-register-certificate-authority).
+
 ### 2.3 Retrieve UID from A71CH with A71CH configure tool
 
 The steps detailed out in subsections 2.3 until 2.6 are covered by bash shell script 
@@ -63,6 +66,10 @@ The following command captures the correct byte's from the UID that will become 
 
     export SE_UID="$(${A71CH_CONFIG_TOOL} info device | grep -e "\([0-9][0-9]:\)\{17,\}" | awk 'BEGIN {FS=":"}; {printf $3$4$9$10$11$12$13$14$15$16}')"
     echo "SE_UID: ${SE_UID}"
+
+Note down your device UID in order to register the device later into the IBM Watson IoT Platform 
+in step [Register Device Type and Device](./README.me#user-content-register-device-type-and-device).
+ 
 
 ### 2.4 Create Device key pair
 
