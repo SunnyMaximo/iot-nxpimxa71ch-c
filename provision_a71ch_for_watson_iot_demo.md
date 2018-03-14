@@ -55,7 +55,7 @@ To create the CA certificate, execute the following commands. Note that you can 
     openssl req -x509 -new -nodes -key CACertificate_ECC.key -sha256 -days 3650 -out CACertificate_ECC.crt -subj "/CN=${ROOT_CA_CN_ECC}"
 
 Store your *CACertificate_ECC.crt* in order to upload the certificate later into 
-the IBM Watson IoT Platform in step [Register Certificate Authority](./README.me#user-content-register-certificate-authority).
+the IBM Watson IoT Platform in step [Register Certificate Authority](https://github.com/ibm-watson-iot/iot-nxpimxa71ch-c/blob/master/README.md#user-content-register-certificate-authority).
 
 ### 2.3 Retrieve UID from A71CH with A71CH configure tool
 
@@ -68,7 +68,7 @@ The following command captures the correct byte's from the UID that will become 
     echo "SE_UID: ${SE_UID}"
 
 Note down your device UID in order to register the device later into the IBM Watson IoT Platform 
-in step [Register Device Type and Device](./README.me#user-content-register-device-type-and-device).
+in step [Register Device Type and Device](https://github.com/ibm-watson-iot/iot-nxpimxa71ch-c/blob/master/README.md#user-content-register-device-type-and-device).
  
 
 ### 2.4 Create Device key pair
