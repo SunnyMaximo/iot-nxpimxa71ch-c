@@ -11,7 +11,7 @@ Things Platform. The library is customized to support
 The client code code can be built only on _NXP i_._MX_ Platform. You need a working 
 combination of *MCIMX6UL-EVKB* and *A71CH* boards. 
 
-<img src="nxpa71ch.jpg" alt="NXP MCIMX6UL-EVKB and A71CH Board" style="display:block;margin:auto;width:400px;height:400px;"/>
+<img src="images/nxpa71ch.jpg" alt="NXP MCIMX6UL-EVKB and A71CH Board" style="display:block;margin:auto;width:400px;height:400px;"/>
 
 You must prepare and provision the board for building client code and connecting client 
 to IBM Watson IoT Platform. Refer to the following documentation for 
@@ -102,7 +102,9 @@ Platform, configure device and connect to Watson IoT Platform:
 ### Register Device Type and Device:
 
 Follow Step 1 described in the following link to register NXP-A71CH generic device type 
-and your device ID (as returned by the A71CH provisioning script "provisionA71CH_WatsonIoT.sh") 
+and your device ID, as returned by the provisioning script "provisionA71CH_WatsonIoT.sh" 
+described in Step 2 of 
+[A71CH provisioning process](./provision_a71ch_for_watson_iot_demo.md) document ) 
 with Watson IoT Platform:
 
 [Step 1: Registering your device with Watson IoT Platform](https://console.bluemix.net/docs/services/IoT/iotplatform_task.html#iotplatform_task)
@@ -110,7 +112,8 @@ with Watson IoT Platform:
 
 ### Register Certificate Authority
 
-Register CA certificate created by A71CH provisioning script, with Watson IoT Platform.
+Register CA certificate created in Step 2 of A71CH provisioning process described in 
+[Provisoing A71CH](./provision_a71ch_for_watson_iot_demo.md) document, with Watson IoT Platform.
 Follow the instructions in the following section of Configuring certificates documentation:
 
 [Registering Certificate Authority (CA) certificates for device authentication](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_certificates.html#set_up_certificates)

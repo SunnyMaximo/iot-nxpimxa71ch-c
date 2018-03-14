@@ -1,5 +1,5 @@
 # Provision A71CH 
-## for IBM Watson IoT Platform Demo
+## For IBM Watson IoT Platform Demo
 
 This document describes *NXP A71CH* provisiong process required for connecting to
 IBM Watson IoT Platform, for demo or ptototype developemnt.
@@ -56,7 +56,8 @@ To create the CA certificate, execute the following commands. Note that you can 
 
 ### 2.3 Retrieve UID from A71CH with A71CH configure tool
 
-The steps detailed out in subsections 2.3 until 2.6 are covered by bash shell script 'provisionA71CH_WatsonIoT.sh'
+The steps detailed out in subsections 2.3 until 2.6 are covered by bash shell script 
+'[provisionA71CH_WatsonIoT.sh](https://github.com/ibm-watson-iot/iot-nxpimxa71ch-c/blob/master/samples/provisionA71CH_WatsonIoT.sh)'
 
 The following command captures the correct byte's from the UID that will become part of the certificates common name into the environment variable SE_UID
 
