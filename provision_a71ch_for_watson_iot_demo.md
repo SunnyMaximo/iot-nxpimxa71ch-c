@@ -92,7 +92,11 @@ Creating a device certificate implies creating first a CSR and submitting this C
     openssl req -new -key ${deviceKey} -out ${deviceCsr} -subj "/CN=${CN_val}"
     openssl x509 -req -days 3650 -in ${deviceCsr} -CAcreateserial -CA CACertificate_ECC.crt -CAkey CACertificate_ECC.key -extfile ./v3_ext.cnf -extensions v3_req -out ${deviceCert}
 
-	
+Note that the CN_val used for creating the device certificate is in a specific format. Any device
+connecting to IBM Watson IoT Platform using a device certificate, must have the device ID in the 
+Common Name (CN) or SubjectAltName in the certificate. For details, refer to the documentation on
+[Configuring certificates](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_certificates.html#set_up_certificates).
+
 ### 2.6 Inject credentials into A71CH with Configure Tool
 
     export deviceRefKey="${SE_UID}_device.ref_key"
