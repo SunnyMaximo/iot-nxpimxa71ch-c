@@ -81,19 +81,12 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
        sprintf(logStr,"isQuickStart Mode: %d",client->isQuickstart);
        LOG(logHdr,logStr);
 
-
-       if ( client->isQuickstart == 0 ) {
-           if (configstr.org == NULL || configstr.type == NULL || configstr.id == NULL ||
-	       configstr.authmethod == NULL || configstr.authtoken == NULL) {
-                   rc = MISSING_INPUT_PARAM;
-           }
-       } else {
-           if (configstr.org == NULL || configstr.type == NULL || configstr.id == NULL ) {
-                   rc = MISSING_INPUT_PARAM;
-           }
-       }
-
-       if ( rc != 0 ) {
+       /* Validate input - for missing configuration data */
+       if ((configstr.org == NULL || configstr.type == NULL || configstr.id == NULL) ||
+           (client->isQuickstart == 0 && configstr.useClientCertificates && 
+               (configstr.rootCACertPath == NULL || configstr.clientCertPath == NULL || configstr.clientKeyPath == NULL))) 
+       {
+           rc = MISSING_INPUT_PARAM;
 	   freeConfig(&configstr);
 	   goto exit;
        }
@@ -119,29 +112,23 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
            }
        }
 
-       if(configstr.useClientCertificates){
-	       if(configstr.rootCACertPath == NULL || configstr.clientCertPath == NULL ||
-		  configstr.clientKeyPath == NULL){
-		       freeConfig(&configstr);
-		       rc = MISSING_INPUT_PARAM;
-		       goto exit;
-	       }
-	       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	       sprintf(logStr,"CACertPath:%s , clientCertPath:%s , clientKeyPath: %s",
-			configstr.rootCACertPath,configstr.clientCertPath,configstr.clientKeyPath);
-	       LOG(logHdr,logStr);
+       if (configstr.useClientCertificates){
+	   sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
+	   sprintf(logStr,"CACertPath:%s , clientCertPath:%s , clientKeyPath: %s",
+		configstr.rootCACertPath,configstr.clientCertPath,configstr.clientKeyPath);
+	   LOG(logHdr,logStr);
        }
 
        if(isGatewayClient){
-	       if(client->isQuickstart) {
-		       printf("Quickstart mode is not supported in Gateway Client\n");
-		       freeConfig(&configstr);
-		       return QUICKSTART_NOT_SUPPORTED;
-	       }
-	       client->isGateway = 1;
+	   if(client->isQuickstart) {
+	       printf("Quickstart mode is not supported in Gateway Client\n");
+	       freeConfig(&configstr);
+	       return QUICKSTART_NOT_SUPPORTED;
+	   }
+	   client->isGateway = 1;
        }
        else
-	       client->isGateway = 0;
+	   client->isGateway = 0;
 
         sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
 	sprintf(logStr,"isGateway Client: %d",client->isGateway);
