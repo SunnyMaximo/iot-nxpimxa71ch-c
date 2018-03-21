@@ -114,8 +114,9 @@ Follow the instructions in the following section of Configuring certificates doc
 
 ### Configure Connection Security Policy
 
-Set *Default Connection Security* to *TLS with Client Certificate Authentication*. For details, refer
-to the section *Configuring connection security policies for advanced security"* in the following link:
+Set *Default Connection Security* to *TLS with Client Certificate Authentication*. For details on how to
+configure connection security policy, refer to the section *Configuring connection security policies 
+for advanced security"* in the following link:
 
 [Configuring security policies](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_policies.html#set_up_policies.md)
 
