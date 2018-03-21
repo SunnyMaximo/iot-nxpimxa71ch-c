@@ -80,8 +80,12 @@ to the IBM Watson™ IoT Platform.
 1. Connect to *[quickstart](https://quickstart.internetofthings.ibmcloud.com/?cm_mc_uid=71367544061615028292336&cm_mc_sid_50200000=59540641520868549701#/)* organization of IBM Watson™ Internet of Things Platform.
 
 * Select "I accept IBM's Terms of Use"
-* Specify a device id to test connectivity. e.g. *70028004006194989053*. Note that this device ID 
-need not be the actual device ID stored in *IC A71CH* Secure Element. 
+* Specify a device id to *70028004006194989053* to test connectivity. Note that this device ID 
+need not be the actual device ID stored in *IC A71CH* Secure Element. Note that the device
+configuration file */opt/iotnxpimxclient/config/device_quickstart.cfg* is set with device id
+as *70028004006194989053*. If you use a different value for device *id* for this test, then you
+will have to update the value of *id* in */opt/iotnxpimxclient/config/device_quickstart.cfg* file.
+
 * Click *Go* button.
 
 2. On Device system, run the following commands:
@@ -90,14 +94,15 @@ need not be the actual device ID stored in *IC A71CH* Secure Element.
 cd /opt/iotnxpimxclient/bin
 ./helloWorld --config /opt/iotnxpimxclient/config/device_quickstart.cfg
 ```
-The test device will get connected to *Quickstart* and the Quickstart page will start showing 
+The test device will get connected to *Quickstart* and the Quickstart page will start showing
 incoming simulated sensor data from the test device.
 
 
 ## Connect A71CH to *your own organization*
 
-Use the following steps to register device type, device ID and CA certificate with Watson IoT
-Platform, configure device and connect to Watson IoT Platform:
+Use the following steps to register CA certificate, set connection security policy, and register
+device type and device id with Watson IoT Platform. This section also describes the steps needed to
+configure the device and connect to Watson IoT Platform.
 
 ### Register Certificate Authority
 
@@ -107,6 +112,12 @@ Follow the instructions in the following section of Configuring certificates doc
 
 [Registering Certificate Authority (CA) certificates for device authentication](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_certificates.html#set_up_certificates)
 
+### Configure Connection Security Policy
+
+Set *Default Connection Security* to *TLS with Client Certificate Authentication*. For details, refer
+to the section *Configuring connection security policies for advanced security"* in the following link:
+
+[Configuring security policies](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_policies.html#set_up_policies.md)
 
 ### Register Device Type and Device:
 
