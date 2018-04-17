@@ -31,14 +31,14 @@
 #                     <uuid>_device.key to <uuid>key and from <uuid>_device.ref_key to <uuid>.ref_key
 #                   - Creates two client certificates as Secure Element can be used in  a device
 #                     that can function as a gateway or a device:
-#                     For gateway:  <uuid>_gateway_ec_pem.crt
 #                     For device:  <uuid>_device_ec_pem.crt
+#                     For gateway:  <uuid>_gateway_ec_pem.crt
 #                   - Added variable for CA and Client ceritificate validity period
-#                   - Adds <uuid>_gateway_ec_pem.crt in SE slot 0 i.e. -x 0
-#                   - Adds <uuid>_device_ec_pem.crt in SE slot 1 i.e. -x 1
+#                   - Adds <uuid>_device_ec_pem.crt in SE slot 1 i.e. -x 0
+#                   - Adds <uuid>_gateway_ec_pem.crt in SE slot 0 i.e. -x 1
 #                   - Sets Device and Gateway certificate serial number is in the following format:
-#                     For gateway 1<Secure_Element_UID>
-#                     For device  2<Secure_Element_UID>
+#                     For device  1<Secure_Element_UID>
+#                     For gateway 2<Secure_Element_UID>
 #
 #########################################################################################################
 ##
@@ -314,10 +314,10 @@ if [ "${SIGNED_BY_INTERMEDIATE_CA}" == "TRUE" ]; then
 fi
 
 # Create serial number of gateway and device certificates
-# for gateway 1${SE_UID}
-# for device  2${SE_UID}
-gatewaySerial="1${SE_UID}"
-deviceSerial="2${SE_UID}"
+# for device  1${SE_UID}
+# for gateway 2${SE_UID}
+deviceSerial="1${SE_UID}"
+gatewaySerial="2${SE_UID}"
 
 # Unique ID Key, reference key and CSR files
 uidKey="${SE_UID}.key"
@@ -410,8 +410,8 @@ echo "debug reset   # Bring secure element in its original state"               
 echo "info device"                                                                            >> ${configScript}
 echo "set pair -x 0 -k ${uidKey} "                                                            >> ${configScript}
 echo "info pair     # Should display public key of keypair just written"                      >> ${configScript}
-echo "wcrt -x 0 -p ${gatewayCert} "                                                           >> ${configScript}
-echo "wcrt -x 1 -p ${deviceCert} "                                                            >> ${configScript}
+echo "wcrt -x 0 -p ${deviceCert} "                                                            >> ${configScript}
+echo "wcrt -x 1 -p ${gatewayCert} "                                                           >> ${configScript}
 echo "info all      # Should show that the certificate is loaded in GP storage (DER format)"  >> ${configScript}
 echo "refpem -c 10 -x 0 -r ${uidRefKey} # Creates the reference key on the file system"       >> ${configScript}
 
