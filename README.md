@@ -120,9 +120,9 @@ for advanced security"* in the following link:
 
 [Configuring security policies](https://console.bluemix.net/docs/services/IoT/reference/security/set_up_policies.html#set_up_policies.md)
 
-### Register Device Type and Device:
+### Register Device Typies and Devices:
 
-Follow Step 1 described in the following link to register NXP-A71CH generic device type 
+Follow Step 1 described in the following link to register NXP-A71CH-D generic device type 
 and your device ID, as returned by the provisioning script "provisionA71CH_WatsonIoT.sh" 
 described in Step 2 of 
 [A71CH provisioning process](./provision_a71ch_for_watson_iot_demo.md) document ) 

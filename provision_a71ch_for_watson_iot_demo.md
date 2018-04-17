@@ -86,7 +86,7 @@ Creating a device certificate implies creating first a CSR and submitting this C
     echo "basicConstraints = CA:FALSE" >> v3_ext.cnf
     echo "keyUsage = digitalSignature" >> v3_ext.cnf
 
-    export CN_val="d:NXP-A71CH:${SE_UID}"
+    export CN_val="d:NXP-A71CH-D:${SE_UID}"
     export deviceCsr="${SE_UID}_device.csr"
     export deviceCert="${SE_UID}_device_ec_pem.crt"
     openssl req -new -key ${deviceKey} -out ${deviceCsr} -subj "/CN=${CN_val}"
