@@ -33,17 +33,30 @@
 #ifndef IOTCLIENT_H_
 #define IOTCLIENT_H_
 
-#include "iotf_utils.h"
 #include <MQTTClient.h>
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE      1024
+#define MAX_SUBSCRIPTION 5
+
+/**
+ * Define the log levels.
+ */
+typedef enum LOGLEVEL {
+    LOGLEVEL_ERROR   = 1,
+    LOGLEVEL_WARN    = 2,
+    LOGLEVEL_INFO    = 3,
+    LOGLEVEL_DEBUG   = 4,
+    LOGLEVEL_TRACE   = 5
+} LOGLEVEL;
 
 enum errorCodes { CONFIG_FILE_ERROR = -3, MISSING_INPUT_PARAM = -4, QUICKSTART_NOT_SUPPORTED = -5 };
+
+typedef enum { QoS0, QoS1, QoS2 } QoS;
 
 extern unsigned short keepAliveInterval;
 extern char *sourceFile;
 
-//configuration file structure
+/* configuration file structure */
 struct iotf_config
 {
        char* org;
@@ -63,7 +76,8 @@ struct iotf_config
 
 typedef struct iotf_config Config;
 
-//iotfclient
+
+/* iotfclient */
 typedef struct
 {
        MQTTClient *c;
@@ -74,6 +88,10 @@ typedef struct
        int isGateway;
 } iotfclient;
 
+/* Callback used to process commands */
+typedef void (*commandCallback)(char* type, char* id, char* commandName, char *format, void* payload, size_t payloadlen);
+
+
 /**
 * Function used to initialize the Watson IoT client
 * @param client - Reference to the Iotfclient
@@ -81,8 +99,8 @@ typedef struct
 * @param domain - Your domain Name
 * @param type - The type of your device
 * @param id - The ID of your device
-* @param auth-method - Method of authentication (the only value currently supported is â€œtokenâ€�)
-* @param auth-token - API key token (required if auth-method is â€œtokenâ€�)
+* @param auth-method - Method of authentication (the only value currently supported is token)
+* @param auth-token - API key token (required if auth-method is token)
 * @Param serverCertPath - Custom Server Certificate Path
 * @Param useCerts - Flag to indicate whether to use client side certificates for authentication
 * @Param rootCAPath - if useCerts is 1, Root CA certificate Path
@@ -96,6 +114,7 @@ typedef struct
 DLLExport int initialize(iotfclient *client, char *orgId, char *domain, char *deviceType, char *deviceId,
               char *authmethod, char *authtoken, char *serverCertPath, int useCerts,
               char *rootCAPath, char *clientCertPath,char *clientKeyPath, int isGatewayClient, int useNXPEngine);
+
 /**
 * Function used to initialize the IBM Watson IoT client using the config file which is generated when you register your device
 * @param client - Reference to the Iotfclient
@@ -115,6 +134,16 @@ DLLExport int initialize_configfile(iotfclient *client, char *configFilePath, in
 * @return int return code
 */
 DLLExport int connectiotf(iotfclient *client);
+
+/**
+ * Function used to set the Command Callback function. This must be set if you to recieve commands.
+ * @param client - Reference to the Iotfclient
+ *
+ * @param cb - A Function pointer to the commandCallback. Its signature - void (*commandCallback)(char* commandName, char* pay
+ * @return int return code
+ */
+DLLExport void setCommandHandler(iotfclient *client, commandCallback cb);
+
 
 /**
 * Function used to publish the given data to the topic with the given QoS
@@ -158,10 +187,94 @@ DLLExport int disconnect(iotfclient *client);
 */
 DLLExport void setKeepAliveInterval(unsigned int keepAlive);
 
-DLLExport int retry_connection(iotfclient *client);
 
-DLLExport int get_config(char * filename, Config * configstr);
+/**
+ * Function used to subscribe to device command.
+ * @param client - Reference to the Iotfclient
+ * @param commandName - Name of command - accepts MQTT wild card character "+"
+ * @param format - Reponse format, e.g. JSON - accepts MQTT wild card character "+"
+ * @param qos - Quality of service QoS0, QoS1, QoS2
+ *
+ * @return int return code
+ */
+DLLExport int subscribeCommand(iotfclient *client, char *commandName, char *format, int qos);
 
-DLLExport void freeConfig(Config *cfg);
+/**
+ * Function used to subscribe to all commands.
+ * @param client - Reference to the Iotfclient
+ *
+ * @return int return code
+ */
+DLLExport int subscribeCommands(iotfclient *client);
+
+/**
+ * Function used to Publish events from the device to the IBM Watson IoT service
+ * @param client - Reference to the Iotfclient
+ * @param eventType - Type of event to be published e.g status, gps
+ * @param eventFormat - Format of the event e.g json
+ * @param data - Payload of the event
+ * @param QoS - qos for the publish event. Supported values : QoS0, QoS1, QoS2
+ *
+ * @return int return code from the publish
+ */
+DLLExport int publishEvent(iotfclient *client, char *eventType, char *eventFormat, char* data, QoS qos);
+
+/**
+* Function used to Publish events from the device to the Watson IoT
+* @param client - Reference to the GatewayClient
+* @param eventType - Type of event to be published e.g status, gps
+* @param eventFormat - Format of the event e.g json
+* @param data - Payload of the event
+* @param QoS - qos for the publish event. Supported values : QoS0, QoS1, QoS2
+*
+* @return int return code from the publish
+*/
+DLLExport int publishGatewayEvent(iotfclient  *client, char *eventType, char *eventFormat, char* data, QoS qos);
+
+/**
+* Function used to Publish events from the device to the Watson IoT
+* @param client - Reference to the GatewayClient
+* @param deviceType - The type of your device
+* @param deviceId - The ID of your deviceId
+* @param eventType - Type of event to be published e.g status, gps
+* @param eventFormat - Format of the event e.g json
+* @param data - Payload of the event
+* @param QoS - qos for the publish event. Supported values : QoS0, QoS1, QoS2
+*
+* @return int return code from the publish
+*/
+DLLExport int publishDeviceEvent(iotfclient  *client, char *deviceType, char *deviceId, char *eventType, char *eventFormat, char* data, QoS qos);
+
+/**
+* Function used to subscribe to all commands for the Gateway.
+* @param client - Reference to the GatewayClient
+*
+* @return int return code
+*/
+DLLExport int subscribeToGatewayCommands(iotfclient  *client);
+
+/**
+* Function used to subscribe to device commands in a  gateway.
+*
+* @return int return code
+*/
+DLLExport int subscribeToDeviceCommands(iotfclient  *client, char* deviceType, char* deviceId, char* command, char* format, int qos) ;
+
+
+/**
+ * Function to enable logging and set log level.
+ *
+ * @param - level       - Log level
+ * @param - logFilePath - Log file path
+ * @return - None
+ **/
+DLLExport void initLogging(const LOGLEVEL level, const char *logFilePath);
+
+/** Utility Functions **/
+DLLExport char *trim(char *str);
+DLLExport int retry_connection(iotfclient  *client);
+DLLExport int reconnect_delay(int i);
+
+DLLExport int subscribeToGatewayNotification(iotfclient  *client);
 
 #endif /* IOTCLIENT_H_ */

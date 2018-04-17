@@ -34,7 +34,7 @@ clean: uninstall
 	-rm -rf paho.mqtt.c-1.2.0 download .setup_done
 setup:
 	@echo "Watson IoT Platform client based on Paho MQTT c client, for NXP i.MX Distro.: Build setup"
-	@[ -f ./.setup_done ] || chmod 755 ./setup.sh; ./setup.sh
+	@chmod 755 ./setup.sh; ./setup.sh
 
 install: build
 	@echo "Install packages"

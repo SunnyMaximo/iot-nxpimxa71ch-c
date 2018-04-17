@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Do not run the script if setup is already done
+if [ -f .setup_done ]
+then
+    echo "Setup is already done."
+    exit 0
+fi
+
 # TEST: If the project is built on a system installed with "NXP i.MX Release Distro"
 grep "NXP i.MX Release" /etc/os-release > /dev/null 2>&1
 if [ $? -ne 0 ]
@@ -56,10 +63,6 @@ then
     tar xzf download/paho.mqtt.c-1.2.0.tar.gz
 fi
 
-# Copy iotf client source and samples in build directory
-echo "Copying the necessary source files to build"
-# cp ./samples/*.c ./build/src/samples/.
-
 # Update Paho MQTT C build tree to include WIoT C client code
 echo "Updating paho mqtt c library build for IBM Watson IoT platform client ..."
 cd paho.mqtt.c-1.2.0
@@ -89,8 +92,8 @@ endif \
 CFLAGS = -I${srcdir} -I${wiotp_srcdir} \
 \
 WIOTP_SOURCE_FILES = $(wiotp_srcdir)/deviceclient.c $(wiotp_srcdir)/gatewayclient.c $(wiotp_srcdir)/iotf_utils.c $(wiotp_srcdir)/iotfclient.c \
-WIOTP_HEADERS = $(wiotp_srcdir)/deviceclient.h $(wiotp_srcdir)/gatewayclient.h $(wiotp_srcdir)/iotf_utils.h $(wiotp_srcdir)/iotfclient.h \
-IOTF_SAMPLE_FILES_C = helloWorld \
+WIOTP_HEADERS = $(wiotp_srcdir)/iotf_utils.h $(wiotp_srcdir)/iotfclient.h \
+IOTF_SAMPLE_FILES_C = helloWorld gatewaySample deviceSample \
 IOTF_SAMPLES = ${addprefix ${blddir}/samples/,${IOTF_SAMPLE_FILES_C}} \
 ' Makefile
 
@@ -107,7 +110,7 @@ sed -i 's/-DOPENSSL /-DOPENSSL -DOPENSSL_LOAD_CONF/g' Makefile
 sed -i '/^build:.*/c\build: | mkdir ${MQTTLIB_CS_TARGET} ${IOTF_SAMPLES}' Makefile
 
 # Update install rule
-sed -i '/^install: buil/c\install: build dummy-unsupported-mqtt-libs install-iotf' Makefile
+sed -i '/^install: buil/c\install: fix-mqttlib-links build dummy-unsupported-mqtt-libs install-iotf' Makefile
 
 # Update uninstall rule
 sed -i '/^uninstall:/c\uninstall: uninstall-iotf' Makefile
@@ -118,6 +121,12 @@ cat >> Makefile << EOF
 \${IOTF_SAMPLES}: \${blddir}/samples/%: \${wiotp_samplesdir}/%.c \$(MQTTLIB_CS_TARGET)
 	\${CC} -o \$@ \$< -I\${srcdir} -I\${wiotp_srcdir} -l\${MQTTLIB_CS} \${FLAGS_EXES}
 
+fix-mqttlib-links:
+	-rm \$(DESTDIR)\${libdir}/lib\$(MQTTLIB_C).so
+	-rm \$(DESTDIR)\${libdir}/lib\$(MQTTLIB_CS).so
+	-rm \$(DESTDIR)\${libdir}/lib\$(MQTTLIB_A).so
+	-rm \$(DESTDIR)\${libdir}/lib\$(MQTTLIB_AS).so
+
 dummy-unsupported-mqtt-libs:
 	touch \${MQTTLIB_C_TARGET}
 	touch \${MQTTLIB_A_TARGET}
@@ -126,20 +135,18 @@ dummy-unsupported-mqtt-libs:
 
 install-iotf: build
 	\$(INSTALL_DATA) \${wiotp_srcdir}/iotfclient.h \$(DESTDIR)\${includedir}
-	\$(INSTALL_DATA) \${wiotp_srcdir}/deviceclient.h \$(DESTDIR)\${includedir}
-	\$(INSTALL_DATA) \${wiotp_srcdir}/gatewayclient.h \$(DESTDIR)\${includedir}
 	\$(INSTALL_DATA) \${wiotp_srcdir}/iotf_utils.h \$(DESTDIR)\${includedir}
 	mkdir -p \$(CLIENTDIR)bin
 	mkdir -p \$(CLIENTDIR)config
 	mkdir -p \$(CLIENTDIR)certs
 	\$(INSTALL_PROGRAM) \${blddir}/samples/helloWorld \$(CLIENTDIR)bin/.
+	\$(INSTALL_PROGRAM) \${blddir}/samples/deviceSample \$(CLIENTDIR)bin/.
+	\$(INSTALL_PROGRAM) \${blddir}/samples/gatewaySample \$(CLIENTDIR)bin/.
 	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.pem \$(CLIENTDIR)certs/.
 	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.cfg \$(CLIENTDIR)config/.
 
 uninstall-iotf:
 	-rm \$(DESTDIR)\${includedir}/iotfclient.h
-	-rm \$(DESTDIR)\${includedir}/deviceclient.h
-	-rm \$(DESTDIR)\${includedir}/gatewayclient.h
 	-rm \$(DESTDIR)\${includedir}/iotf_utils.h
 	-rm \$(CLIENTDIR)bin/helloWorld
 

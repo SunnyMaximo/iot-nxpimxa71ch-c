@@ -22,74 +22,82 @@
  * ----------------------------------------------------------------------------
  * Contrinutors for NXP Engine changes:
  *    Ranjan Dasgupta         - Initial changes to support NXP Engine
+ *                            - Code cleanup/refactor and logging support
  *
  *******************************************************************************/
 
- //Include iotf_utils.h
- #include "iotf_utils.h"
+#include "iotfclient.h"
+#include "iotf_utils.h"
 
- //File pointer to log file
- FILE *logger = NULL;
- //Character strings to hold log header and log message to be dumped.
- char logHdr[LOG_BUF];
- char logStr[LOG_BUF];
+#define MAX_LOG_BUFSIZE 8192
 
- /** Function to check whether environemnt variable IOT_LOGGING defined.
- * If defined, then initializes the logger with the logging file if it's not done so.
- * @param - None
- * @return - None
- **/
- void enableLogging(){
-        //printf("In enableLogging...\n");
-        if(logger == NULL)
-        {
-                //printf("Initializing the logger...\n");
-                char *loggingVar = getenv("IOT_LOGGING");
-                int enabled = (loggingVar != NULL) && strcmp(loggingVar,"ON")==0?1:0;
-                char *iotfLog = "iotfclient.log";
-                char *logFile;
+FILE *logger = NULL;
+int logLevel = LOGLEVEL_INFO;
 
-                if(enabled){
-                        logFile = (char*)malloc(strlen(iotfLog)+5);
-                        strcpy(logFile,"./");
-                        strcat(logFile,iotfLog);
+/**
+ * LOG Level string
+ */
+static char * logLevelStr(int level)
+{
+    if (level == 1)
+        return "ERROR";
+    else  if (level == 2)
+        return "WARN";
+    else  if (level == 3)
+        return "INFO";
+    else  if (level == 4)
+        return "DEBUG";
+    else  if (level == 5)
+        return "TRACE";
 
-                        if((logger = fopen(logFile,"a"))!= NULL){
-                                printf("Logger initialized with log file - %s\n",logFile);
-                                sprintf(logStr,"%s","==============  iotfclient.log Entry ==============");
-                                LOG("",logStr);
-                                sprintf(logStr,"%s",__TIMESTAMP__);
-                                LOG("",logStr);
-                        }
-                        else{
-                                //printf("Logger not initialized...\n");
-                                enabled = 0;
-                        }
-                        //freePtr(logFile);
-                }
-                //else
-                        //printf("Logging is Not Enabled");
-        }
-        //printf("Returning from enableLogging...\n");
+    return "UNKNOWN";
+}
 
-    return;
- }
 
- /** Function to disable the logging by printing the footer in the log file.
- * @param - None
+/**
+ * Create log entry
+ */
+void logInvoke(const LOGLEVEL level, const char * func, const char * file, int line, const char * fmts, ...) 
+{
+    va_list args;
+    char buf[MAX_LOG_BUFSIZE];
+
+    if (logger != NULL && level <= logLevel ) 
+    {
+        va_start(args, fmts);
+        vsnprintf(buf, MAX_LOG_BUFSIZE, fmts, args);
+        va_end(args);
+
+        fprintf(logger, "%s %s %s %d: %s: %s\n", __TIMESTAMP__, func, basename((char *)file), line, logLevelStr(level), buf);
+    }
+}
+
+
+/** 
+ * Function to enable logging and set log level.
  *
+ * @param - level - set log level
  * @return - None
  **/
- void disableLogging(){
-        if(logger != NULL){
-
-  	       sprintf(logStr,"%s",__TIMESTAMP__);
-  	       LOG("",logStr);
-  	       LOG("","==============  iotfclient.log Exit ==============");
-  	       fclose(logger);
-               logger = NULL;
+void initLogging(const LOGLEVEL level, const char * logFilePath) 
+{
+    if (logger == NULL)
+    {
+        char *logFile = "./iotfclient.log";   /* Default log file */
+        if ( logFilePath && *logFilePath != '\0' )
+            logFile = (char *)logFilePath;
+        
+        printf("Initialize logging. LogFile:%s LogLevel:%d\n", logFile, level);
+        logLevel = level;
+        if ((logger = fopen(logFile,"a")) != NULL) {
+            fprintf(logger, "%s %s %s %d: INFO: %s\n", __TIMESTAMP__, __FUNCTION__, basename((char *) __FILE__ ), __LINE__, "----- INITIALIZE LOGGING -----");
+            fprintf(logger, "%s %s %s %d: INFO: Log Level: %s\n", __TIMESTAMP__, __FUNCTION__, basename((char *) __FILE__ ), __LINE__, logLevelStr(level));
         }
- }
+        else
+            fprintf(stderr, "ERROR: Unable to initialize logging. errno=%d\n", errno);
+    }
+    return;
+}
 
 /** 
 * @param - Pointer to character string to hold the final path
@@ -98,180 +106,134 @@
 * @returns - None
 *
 **/
- void buildPath(char **ptr, char *filePath){
-         sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-         LOG(logHdr,"entry::");
+void buildPath(char **ptr, char *filePath)
+{
+    LOG(DEBUG, "entry::");
+    int pathLen;
+    pathLen = strlen(filePath);
+    *ptr = (char*)malloc(sizeof(char)*(pathLen+3));
+    strcpy(*ptr,".");
+    strcat(*ptr,filePath);
+    (*ptr)[pathLen]='\0';
+    LOG(INFO, "Built Path = %s",*ptr);
+    LOG(DEBUG, "exit::");
+}
 
-         int pathLen;
-         pathLen = strlen(filePath);
-         *ptr = (char*)malloc(sizeof(char)*(pathLen+3));
-         strcpy(*ptr,".");
-         strcat(*ptr,filePath);
-
-         (*ptr)[pathLen]='\0';
-
-         sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-         sprintf(logStr,"Built Path = %s",*ptr);
-         LOG(logHdr,logStr);
-         LOG(logHdr,"exit::");
- }
-
- /**
+/**
  * @param - Address of character pointer to store the server certificate path
  * @return - void
  **/
- void getServerCertPath(char** path){
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-        LOG(logHdr,"entry::");
+void getServerCertPath(char** path)
+{
+    LOG(DEBUG, "entry::");
+    buildPath(path,"/IoTFoundation.pem");
+    LOG(INFO, "Server Certificate Path = %s",*path);
+    LOG(DEBUG,"exit::");
+}
 
-	buildPath(path,"/IoTFoundation.pem");
-
-        sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-        sprintf(logStr,"Server Certificate Path = %s",*path);
-        LOG(logHdr,logStr);
-        LOG(logHdr,"exit::");
- }
-
- /** 
- * @param - Address of character pointer to store the samples path
- * @return - void
- **/
- void getSamplesPath(char** path){
-        enableLogging();
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-        LOG(logHdr,"entry::");
-
-	buildPath(path,"/samples/");
-
-        sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-        sprintf(logStr,"Samples Path = %s",*path);
-        LOG(logHdr,logStr);
-        LOG(logHdr,"exit::");
-
- }
-
- /**
+/**
  * @param - Character string to store the path
  *        - Config file name to be appended to path
  * @return - void
  **/
- void getTestCfgFilePath(char** path, char* fileName){
-        enableLogging();
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-        LOG(logHdr,"entry::");
+void getTestCfgFilePath(char** path, char* fileName)
+{
+    LOG(DEBUG, "entry::");
+    buildPath(path,"/test/");
+    *path = (char*)realloc(*path,strlen(*path)+strlen(fileName)+1);
+    strcat(*path,fileName);
+    LOG(INFO, "Test Config File Path = %s",*path);
+    LOG(DEBUG,"exit::");
+}
 
-        buildPath(path,"/test/");
+/**
+ * Trim characters
+ */
+char *trim(char *str) 
+{
+    LOG(DEBUG,"entry::");
+    size_t len = 0;
+    char *frontp = str - 1;
+    char *endp = NULL;
 
-        *path = (char*)realloc(*path,strlen(*path)+strlen(fileName)+1);
-        strcat(*path,fileName);
+    if (str == NULL)
+        return NULL;
 
-        sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-        sprintf(logStr,"Test Config File Path = %s",*path);
-        LOG(logHdr,logStr);
-        LOG(logHdr,"exit::");
- }
+    if (str[0] == '\0')
+        return str;
 
-//Trimming characters
- char *trim(char *str) {
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-        LOG(logHdr,"entry::");
+    len = strlen(str);
+    endp = str + len;
 
- 	size_t len = 0;
- 	char *frontp = str - 1;
- 	char *endp = NULL;
+    while (isspace(*(++frontp)))
+        ;
 
- 	if (str == NULL)
- 		return NULL;
+    while (isspace(*(--endp)) && endp != frontp)
+        ;
 
- 	if (str[0] == '\0')
- 		return str;
+    if (str + len - 1 != endp)
+        *(endp + 1) = '\0';
+    else if (frontp != str && endp == frontp)
+        *str = '\0';
 
- 	len = strlen(str);
- 	endp = str + len;
+    endp = str;
+    if (frontp != str) {
+        while (*frontp)
+            *endp++ = *frontp++;
 
- 	while (isspace(*(++frontp)))
- 		;
- 	while (isspace(*(--endp)) && endp != frontp)
- 		;
+        *endp = '\0';
+    }
 
- 	if (str + len - 1 != endp)
- 		*(endp + 1) = '\0';
- 	else if (frontp != str && endp == frontp)
- 		*str = '\0';
+    LOG(DEBUG, "String After trimming = %s",str);
+    LOG(DEBUG,"exit::");
 
- 	endp = str;
- 	if (frontp != str) {
- 		while (*frontp)
- 			*endp++ = *frontp++;
- 		*endp = '\0';
- 	}
+    return str;
+}
 
-        sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-        sprintf(logStr,"String After trimming = %s",str);
-        LOG(logHdr,logStr);
-        LOG(logHdr,"exit::");
-
- 	return str;
- }
-
- /** Function to copy source to destination string after allocating required memory.
+/** Function to copy source to destination string after allocating required memory.
  * @param - Address of character pointer as destination
  *        - Contents of source string
  * @return - void
  **/
- void strCopy(char **dest, char *src){
-         sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-         LOG(logHdr,"entry::");
+void strCopy(char **dest, char *src)
+{
+    LOG(DEBUG,"entry::");
 
-         if(strlen(src) >= 1){
+    if (strlen(src) >= 1)
+    {
+        *dest = (char*)malloc(sizeof(char)*(strlen(src)+1));
+        strcpy(*dest,src);
+        LOG(DEBUG,"Destination String = %s",*dest);
+    } else {
+        LOG(WARN, "Source String is empty");
+    }
 
-                 *dest = (char*)malloc(sizeof(char)*(strlen(src)+1));
-                 strcpy(*dest,src);
+    LOG(DEBUG,"exit::");
+}
 
-                 sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-                 sprintf(logStr,"Destination String = %s",*dest);
-                 LOG(logHdr,logStr);
-         }
-         else{
-                 sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-                 sprintf(logStr,"Source String is empty");
-                 LOG(logHdr,logStr);
-         }
-
-         sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-         LOG(logHdr,"exit::");
- }
-
- /** Function to free the allocated memory for character string.
+/** Function to free the allocated memory for character string.
  * @param - Character pointer pointing to allocated memory
  * @return - void
  **/
- void freePtr(char* p){
-         sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-         LOG(logHdr,"entry::");
+void freePtr(char* p)
+{
+    LOG(DEBUG,"entry::");
+    if (p != NULL)
+        free(p);
+    LOG(DEBUG,"exit::");
+}
 
-         if(p != NULL)
-            free(p);
-         else {
-                 sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-                 sprintf(logStr,"NULL Pointer cannot be freed");
-                 LOG(logHdr,logStr);
-         }
-
-         sprintf(logHdr,"%s:%d:%s",__FILE__,__LINE__,__func__);
-         LOG(logHdr,"exit::");
- }
-
- /* Reconnect delay time
+/* Reconnect delay time
   * depends on the number of failed attempts
   */
- int reconnect_delay(int i)
- {
- 	if (i < 10) {
- 		return 3; // first 10 attempts try every 3 seconds
- 	}
- 	if (i < 20)
- 		return 60; // next 10 attempts retry after every 1 minute
+int reconnect_delay(int i) 
+{
+    if (i < 10) {
+        return 3; // first 10 attempts try every 3 seconds
+    }
+    if (i < 20)
+        return 60; // next 10 attempts retry after every 1 minute
 
- 	return 600;	// after 20 attempts, retry every 10 minutes
- }
+    return 600;	// after 20 attempts, retry every 10 minutes
+}
+

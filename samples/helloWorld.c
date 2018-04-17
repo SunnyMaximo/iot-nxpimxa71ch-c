@@ -27,8 +27,9 @@
 #include <signal.h>
 #include <memory.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-#include "deviceclient.h"
+#include "iotfclient.h"
 
 char *configFilePath = NULL;
 volatile int interrupt = 0;
@@ -86,6 +87,9 @@ int main(int argc, char *argv[])
     signal(SIGINT, sigHandler);
     signal(SIGTERM, sigHandler);
 
+    /* Initialize logging */
+    initLogging(LOGLEVEL_INFO, NULL);
+
     /* Initialize iotf configuration */
     int isGatewayClient = 0;
     rc = initialize_configfile(&client, configFilePath, isGatewayClient);
@@ -107,7 +111,7 @@ int main(int argc, char *argv[])
     while(!interrupt)
     {
         fprintf(stdout, "Send status event\n");
-        rc = publishEvent(&client,"status","json", data , QOS0);
+        rc = publishEvent(&client,"status","json", data , QoS0);
         fprintf(stdout, "RC from publishEvent(): %d\n", rc);
         sleep(2);
     }
@@ -118,31 +122,5 @@ int main(int argc, char *argv[])
     disconnect(&client);
 
     return 0;
-
-
-
-/*
-        int useCerts = argv[5][0] - '0';
-	int rc = -1;
-	if(!useCerts)
-		rc = initialize(&client,argv[1],"internetofthings.ibmcloud.com",argv[2],
-                		argv[3],"token",argv[4],NULL,useCerts,NULL,NULL,NULL,0);
-	else
-		rc = initialize(&client,argv[1],"internetofthings.ibmcloud.com",argv[2],
-				argv[3],"token",argv[4],NULL,useCerts,argv[6],argv[7],argv[8],0);
-
-	if(rc != SUCCESS){
-		printf("Initialize returned rc = %d.\n Quitting..\n", rc);
-		return 0;
-	}
-
-	rc = connectiotf(&client);
-
-	if(rc != SUCCESS){
-		printf("Connection returned rc = %d.\n Quitting..\n", rc);
-		return 0;
-	}
-*/
-
 
 }

@@ -27,511 +27,486 @@
  * ----------------------------------------------------------------------------
  * Contrinutors for NXP Engine changes:
  *    Ranjan Dasgupta         - Initial changes to support NXP Engine
+ *                            - Code cleanup/refactor and logging support
  *
  *******************************************************************************/
 
 #include "iotfclient.h"
+#include "iotf_utils.h"
 
+static int get_config(char * filename, Config * configstr);
+static void freeConfig(Config *cfg);
+static int messageArrived(void *context, char *topicName, int topicLen, MQTTClient_message * message);
+static void messageDelivered(void *context, MQTTClient_deliveryToken dt);
+extern void freeGatewaySubscriptionList(iotfclient *client);
+
+/* Command Callback */
+commandCallback cb;
+ 
 unsigned short keepAliveInterval = 60;
 
-//Character strings to hold log header and log message to be dumped.
-char logHdr[LOG_BUF];
-char logStr[LOG_BUF];
-
 /**
-* Function used to initialize the IBM Watson IoT client using the config file which is
-* generated when you register your device.
-* @param configFilePath - File path to the configuration file
-* @Param isGatewayClient - 0 for device client or 1 for gateway client
-*
-* @return int return code
-* error codes
-* CONFIG_FILE_ERROR -3 - Config file not present or not in right format
-*/
-
+ * Function used to initialize the IBM Watson IoT client using the config file which is
+ * generated when you register your device.
+ * @param configFilePath - File path to the configuration file
+ * @Param isGatewayClient - 0 for device client or 1 for gateway client
+ *
+ * @return int return code
+ * error codes
+ * CONFIG_FILE_ERROR -3 - Config file not present or not in right format
+ */
 int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatewayClient)
 {
-       enableLogging();
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"entry::");
-
-       Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0};
-
-       int rc = 0;
-
-       rc = get_config(configFilePath, &configstr);
-
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"org:%s , domain:%s , type: %s , id:%s , token: %s , useCerts: %d , serverCertPath: %s",
-		configstr.org,configstr.domain,configstr.type,configstr.id,configstr.authtoken,configstr.useClientCertificates,
-		configstr.serverCertPath);
-       LOG(logHdr,logStr);
-
-       if(rc != SUCCESS) {
-	       goto exit;
-       }
-
-       /* check for quickstart domain */
-       if ((strcmp(configstr.org,"quickstart") == 0))
-	       client->isQuickstart = 1;
-       else
-	       client->isQuickstart = 0;
-
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"isQuickStart Mode: %d",client->isQuickstart);
-       LOG(logHdr,logStr);
-
-       /* Validate input - for missing configuration data */
-       if ((configstr.org == NULL || configstr.type == NULL || configstr.id == NULL) ||
-           (client->isQuickstart == 0 && configstr.useClientCertificates && 
-               (configstr.rootCACertPath == NULL || configstr.clientCertPath == NULL || configstr.clientKeyPath == NULL))) 
-       {
-           rc = MISSING_INPUT_PARAM;
-	   freeConfig(&configstr);
-	   goto exit;
-       }
-
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"useCertificates: %d",configstr.useClientCertificates);
-       LOG(logHdr,logStr);
-
-       /* Check if NXP Engine is enabled - NXP Engine is not allowed in quickstart domain or useClientCertificate
-        * is not enabled
-        */
-       if ( configstr.useNXPEngine ) {
-           if ( ! configstr.useClientCertificates ) {
-	       freeConfig(&configstr);
-               rc = CONFIG_FILE_ERROR;
-	       goto exit;
-           }
-
-           if ( client->isQuickstart == 1 ) {
-	       freeConfig(&configstr);
-	       rc = QUICKSTART_NOT_SUPPORTED;
-	       goto exit;
-           }
-       }
-
-       if (configstr.useClientCertificates){
-	   sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	   sprintf(logStr,"CACertPath:%s , clientCertPath:%s , clientKeyPath: %s",
-		configstr.rootCACertPath,configstr.clientCertPath,configstr.clientKeyPath);
-	   LOG(logHdr,logStr);
-       }
-
-       if(isGatewayClient){
-	   if(client->isQuickstart) {
-	       printf("Quickstart mode is not supported in Gateway Client\n");
-	       freeConfig(&configstr);
-	       return QUICKSTART_NOT_SUPPORTED;
-	   }
-	   client->isGateway = 1;
-       }
-       else
-	   client->isGateway = 0;
-
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"isGateway Client: %d",client->isGateway);
-	LOG(logHdr,logStr);
-
-       client->cfg = configstr;
-
- exit:
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"rc = %d",rc);
-	LOG(logHdr,logStr);
-	LOG(logHdr,"exit::");
-
-       return rc;
-
-}
-
-/**
-* Function used to initialize the Watson IoT client
-* @param client - Reference to the Iotfclient
-* @param org - Your organization ID
-* @param domain - Your domain Name
-* @param type - The type of your device
-* @param id - The ID of your device
-* @param auth-method - Method of authentication (the only value currently supported is â€œtokenâ€�)
-* @param auth-token - API key token (required if auth-method is â€œtokenâ€�)
-* @Param serverCertPath - Custom Server Certificate Path
-* @Param useCerts - Flag to indicate whether to use client side certificates for authentication
-* @Param rootCAPath - if useCerts is 1, Root CA certificate Path
-* @Param clientCertPath - if useCerts is 1, Client Certificate Path
-* @Param clientKeyPath - if useCerts is 1, Client Key Path
-* @Param useNXPEngine - if useCerts is 1 and domain is not quickstart
-*
-* @return int return code
-*/
-int initialize(iotfclient  *client, char *orgId, char* domainName, char *deviceType,
-	      char *deviceId, char *authmethod, char *authToken, char *serverCertPath, int useCerts,
-	       char *rootCACertPath, char *clientCertPath,char *clientKeyPath, int isGatewayClient, int useNXPEngine)
-{
-       enableLogging();
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"entry::");
-
-       Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0};
-       int rc = 0;
-
-       	sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"org:%s , domain:%s , type: %s , id:%s , token: %s , useCerts: %d , serverCertPath: %s",
-		       orgId,domainName,deviceType,deviceId,authToken,useCerts,serverCertPath);
-	LOG(logHdr,logStr);
-
-       if(orgId == NULL || deviceType == NULL || deviceId == NULL) {
-	       rc = MISSING_INPUT_PARAM;
-	       goto exit;
-       }
-
-       if(useCerts){
-	       if(rootCACertPath == NULL || clientCertPath == NULL || clientKeyPath == NULL){
-		       rc = MISSING_INPUT_PARAM;
-		       goto exit;
-	       }
-       }
-
-       strCopy(&configstr.org, orgId);
-       strCopy(&configstr.domain,"internetofthings.ibmcloud.com");
-       if(domainName != NULL)
-	       strCopy(&configstr.domain, domainName);
-       strCopy(&configstr.type, deviceType);
-       strCopy(&configstr.id, deviceId);
-
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"cfgstr.domain:%s , cfgstr.type:%s , cfgstr.id: %s",configstr.domain,configstr.type,configstr.id);
-	LOG(logHdr,logStr);
-
-       if((strcmp(orgId,"quickstart") != 0)) {
-	       if(authmethod == NULL || authToken == NULL) {
-		       freeConfig(&configstr);
-		       rc = MISSING_INPUT_PARAM;
-		       goto exit;
-	       }
-	       strCopy(&configstr.authmethod, authmethod);
-	       strCopy(&configstr.authtoken, authToken);
-
-	       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	       sprintf(logStr,"cfgstr.authmethod:%s , cfgstr.token:%s ",configstr.authmethod,configstr.authtoken);
-	       LOG(logHdr,logStr);
-
-	       if(serverCertPath == NULL)
-		       strCopy(&configstr.serverCertPath,"./IoTFoundation.pem");
-	       else
-		       strCopy(&configstr.serverCertPath,serverCertPath);
-
-	       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	       sprintf(logStr,"cfgstr.serverCertPath:%s",configstr.serverCertPath);
-	       LOG(logHdr,logStr);
-
-	       if(useCerts){
-		       strCopy(&configstr.rootCACertPath,rootCACertPath);
-		       strCopy(&configstr.clientCertPath,clientCertPath);
-		       strCopy(&configstr.clientKeyPath,clientKeyPath);
-		       configstr.useClientCertificates = 1;
-
-		       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-		       sprintf(logStr,"cfgstr.CACertPath:%s , cfgstr.clientCertPath:%s , cfgstr.clientKeyPath: %s",
-				configstr.rootCACertPath,configstr.clientCertPath,configstr.clientKeyPath);
-		       LOG(logHdr,logStr);
-		       sprintf(logStr,"cfgstr.useCertificates:%d",configstr.useClientCertificates);
-		       LOG(logHdr,logStr);
-	       }
-	       client->isQuickstart = 0;
-               configstr.port = 8883;
-       }
-       else
-	       client->isQuickstart = 1;
-
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"isQuickStart Mode: %d Port: %d",client->isQuickstart,configstr.port);
-	LOG(logHdr,logStr);
-
-       if(isGatewayClient){
-	       if(client->isQuickstart) {
-		       printf("Quickstart mode is not supported in Gateway Client\n");
-		       freeConfig(&configstr);
-		       return QUICKSTART_NOT_SUPPORTED;
-	       }
-	       client->isGateway = 1;
-       }
-       else
-	       client->isGateway = 0;
-
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"isGateway Client: %d",client->isGateway);
-	LOG(logHdr,logStr);
-
-       /* Check if NXP Engine is enabled - NXP Engine is not allowed in quickstart domain or useClientCertificate
-        * is not enabled
-        */
-       if ( configstr.useNXPEngine ) {
-           if ( ! configstr.useClientCertificates ) {
-	       freeConfig(&configstr);
-               rc = CONFIG_FILE_ERROR;
-	       goto exit;
-           }
-
-           if ( client->isQuickstart == 1 ) {
-	       freeConfig(&configstr);
-	       rc = QUICKSTART_NOT_SUPPORTED;
-	       goto exit;
-           }
-       }
-
-       client->cfg = configstr;
-
-exit:
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"rc = %d",rc);
-	LOG(logHdr,logStr);
-	LOG(logHdr,"exit::");
-
-       return rc;
-}
-
-// This is the function to read the config from the device.cfg file
-int get_config(char * filename, Config * configstr) {
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"entry::");
-
-       int rc = 0;
-       FILE* prop;
-       prop = fopen(filename, "r");
-       if (prop == NULL) {
-	      rc = CONFIG_FILE_ERROR;
-	      goto exit;
-       }
-       char line[256];
-       int linenum = 0;
-       strCopy(&configstr->domain,"internetofthings.ibmcloud.com");
-
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"Default domainName: %s",configstr->domain);
-       LOG(logHdr,logStr);
-
-       while (fgets(line, 256, prop) != NULL) {
-	      char* prop;
-	      char* value;
-	      linenum++;
-	      if (line[0] == '#')
-		      continue;
-
-	      prop = strtok(line, "=");
-	      prop = trim(prop);
-	      value = strtok(NULL, "=");
-	      value = trim(value);
-
-	      sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	      sprintf(logStr,"Property: %s , Value: %s",prop,value);
-	      LOG(logHdr,logStr);
-
-	      if (strcmp(prop, "org") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&(configstr->org), value);
-
-		  if(strcmp(configstr->org,"quickstart") !=0)
-		     configstr->port = 8883;
-
-		  sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-		  sprintf(logStr,"cfgstr.org: %s , cfgstr.port: %d",configstr->org,configstr->port);
-		  LOG(logHdr,logStr);
-	       }
-	      else if (strcmp(prop, "domain") == 0){
-		  if(strlen(value) <= 1)
-		     strCopy(&configstr->domain,"internetofthings.ibmcloud.com");
-		  else
-		     strCopy(&configstr->domain, value);
-
-		  sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-		  sprintf(logStr,"cfgstr.domain: %s ",configstr->domain);
-		  LOG(logHdr,logStr);
-	       }
-	      else if (strcmp(prop, "type") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&configstr->type, value);
-	       }
-	      else if (strcmp(prop, "id") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&configstr->id, value);
-	       }
-	      else if (strcmp(prop, "auth-token") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&configstr->authtoken, value);
-	       }
-	      else if (strcmp(prop, "auth-method") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&configstr->authmethod, value);
-	       }
-	      else if (strcmp(prop, "serverCertPath") == 0){
-		  if(strlen(value) <= 1)
-		     getServerCertPath(&configstr->serverCertPath);
-		  else
-		     strCopy(&configstr->serverCertPath, value);
-
-		  sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-		  sprintf(logStr,"cfgstr.serverCertPath: %s ",configstr->serverCertPath);
-		  LOG(logHdr,logStr);
-	       }
-	      else if (strcmp(prop, "rootCACertPath") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&configstr->rootCACertPath, value);
-	       }
-	      else if (strcmp(prop, "clientCertPath") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&configstr->clientCertPath, value);
-	       }
-	      else if (strcmp(prop, "clientKeyPath") == 0){
-		  if(strlen(value) > 1)
-		    strCopy(&configstr->clientKeyPath, value);
-	       }
-	      else if (strcmp(prop,"useClientCertificates") == 0){
-		  configstr->useClientCertificates = value[0] - '0';
-	       }
-	      else if (strcmp(prop,"useNXPEngine") == 0){
-		  configstr->useNXPEngine = value[0] - '0';
-	       }
-       }
- exit:
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"rc = %d",rc);
-	LOG(logHdr,logStr);
-	LOG(logHdr,"exit::");
-
-       return rc;
-}
-
-/**
-* Function used to connect to the IBM Watson IoT client
-* @param client - Reference to the Iotfclient
-*
-* @return int return code
-*/
-int connectiotf(iotfclient  *client)
-{
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"entry::");
-
-       int rc = 0;
-
-        MQTTClient mqttClient;
-        MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-        MQTTClient_SSLOptions ssl_opts = MQTTClient_SSLOptions_initializer;
-
-       int useCerts = client->cfg.useClientCertificates;
-       int isGateway = client->isGateway;
-       int qsMode = client->isQuickstart;
-       int port = client->cfg.port;
-
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"useCerts:%d , isGateway:%d , qsMode:%d",useCerts,isGateway,qsMode);
-       LOG(logHdr,logStr);
-
-       char messagingUrl[120];
-       sprintf(messagingUrl, ".messaging.%s",client->cfg.domain);
-       char hostname[strlen(client->cfg.org) + strlen(messagingUrl) + 1];
-       sprintf(hostname, "%s%s", client->cfg.org, messagingUrl);
-       int clientIdLen =  strlen(client->cfg.org) + strlen(client->cfg.type) + strlen(client->cfg.id) + 5;
-       char *clientId = malloc(clientIdLen);
-
-       if(isGateway)
-	  sprintf(clientId, "g:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
-       else
-	  sprintf(clientId, "d:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
-
-       	sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"messagingUrl:%s , hostname:%s , port:%d , clientId:%s",messagingUrl,hostname,port,clientId);
-	LOG(logHdr,logStr);
-
-       // create MQTT Client
-       char connectionUrl[strlen(hostname) + 14];
-       if ( port == 1883 )
-           sprintf(connectionUrl, "tcp://%s:%d", hostname, port);
-       else
-           sprintf(connectionUrl, "ssl://%s:%d", hostname, port);
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"connectionUrl:%s", connectionUrl);
-       LOG(logHdr,logStr);
-
-       /* If useNXPEngine is enabled set environment variable to load NXP engine */
-       if ( client->cfg.useNXPEngine ) {
-           char * envval;
-           envval = getenv ("OPENSSL_CONF");
-
-           if ( envval && *envval != '\0' && strstr(envval, "A71CH")) {
-          	sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	        sprintf(logStr,"OPENSSL_CONF set to %s", envval);
-	        LOG(logHdr,logStr);
-           } else {
-               setenv ("OPENSSL_CONF", "/etc/ssl/opensslA71CH_i2c.cnf", 1);
-               envval = getenv ("OPENSSL_CONF");
-       	       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	       sprintf(logStr,"OPENSSL_CONF set to %s", envval);
-	       LOG(logHdr,logStr);
-           }
-       }
-
-       rc = MQTTClient_create(&mqttClient, connectionUrl, clientId, MQTTCLIENT_PERSISTENCE_NONE, NULL);
-       if ( rc != 0 ) {
-	   sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	   sprintf(logStr,"RC from MQTTClient_create:%d",rc);
-           LOG(logHdr,logStr);
-           goto exit;
-       }
-       client->c = mqttClient;
-
-       // set callbacks and connection options
-       conn_opts.keepAliveInterval = keepAliveInterval;
-       conn_opts.reliable = 0;
-       conn_opts.cleansession = 1;
-       ssl_opts.enableServerCertAuth = 0;
-
-       if (!qsMode) {
-           conn_opts.username = "use-token-auth";
-           conn_opts.password = client->cfg.authtoken;
-       }
-
-       if ( port != 1883 ) {
-           conn_opts.ssl = &ssl_opts;
-           if (useCerts) {
-               conn_opts.ssl->enableServerCertAuth = 1;
-               conn_opts.ssl->trustStore = client->cfg.rootCACertPath;
-               conn_opts.ssl->keyStore = client->cfg.clientCertPath;
-               conn_opts.ssl->privateKey = client->cfg.clientKeyPath;
-           }
-       }
-
-           
-       if ((rc = MQTTClient_connect(client->c, &conn_opts))==0){
-	   if(qsMode)
-	      printf("Device Client Connected to %s Platform in QuickStart Mode\n",hostname);
-	   else
-	   {
-	       char *clientType = (isGateway)?"Gateway Client":"Device Client";
-	       char *connType = (useCerts)?"Client Side Certificates":"Secure Connection";
-	       printf("%s Connected to %s in registered mode using %s\n",clientType,hostname,connType);
-	   }
-
-	   sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	   sprintf(logStr,"RC from MQTTConnect: %d",rc);
-	   LOG(logHdr,logStr);
-       }
-
-exit:
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	sprintf(logStr,"rc = %d",rc);
-	LOG(logHdr,logStr);
-
-        if(rc != 0){
-                freeConfig(&client->cfg);
+    LOG(TRACE, "entry::");
+
+    Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0};
+
+    int rc = get_config(configFilePath, &configstr);
+    if (rc != MQTTCLIENT_SUCCESS) {
+        goto exit;
+    }
+
+    LOG(DEBUG, "org:%s , domain:%s , type: %s , id:%s , token: %s , useCerts: %d , serverCertPath: %s",
+        configstr.org,configstr.domain,configstr.type,configstr.id,configstr.authtoken,configstr.useClientCertificates,
+        configstr.serverCertPath);
+
+    /* check for quickstart domain */
+    if ((strcmp(configstr.org,"quickstart") == 0)) {
+        client->isQuickstart = 1;
+        LOG(INFO, "Connection to WIoTP Quickstart org");
+    } else {
+        client->isQuickstart = 0;
+    }
+
+    /* Validate input - for missing configuration data */
+    if ((configstr.org == NULL || configstr.type == NULL || configstr.id == NULL) ||
+        (client->isQuickstart == 0 && configstr.useClientCertificates && 
+         (configstr.rootCACertPath == NULL || configstr.clientCertPath == NULL || configstr.clientKeyPath == NULL))) 
+    {
+        rc = MISSING_INPUT_PARAM;
+        freeConfig(&configstr);
+        goto exit;
+    }
+
+    LOG(INFO, "useCertificates=%d", configstr.useClientCertificates);
+
+    /* Check if NXP Engine is enabled - NXP Engine is not allowed in quickstart domain or useClientCertificate
+     * is not enabled
+     */
+    if ( configstr.useNXPEngine ) {
+        if ( ! configstr.useClientCertificates ) {
+            freeConfig(&configstr);
+            rc = CONFIG_FILE_ERROR;
+            goto exit;
         }
 
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-	LOG(logHdr,"exit::");
+        if ( client->isQuickstart == 1 ) {
+           freeConfig(&configstr);
+           rc = QUICKSTART_NOT_SUPPORTED;
+           goto exit;
+        }
+    }
 
-        return rc;
+    if (configstr.useClientCertificates){
+       LOG(INFO, "CACertPath=%s", configstr.rootCACertPath);
+       LOG(INFO, "clientCertPath=%s", configstr.clientCertPath);
+       LOG(INFO, "clientKeyPath=%s", configstr.clientKeyPath);
+    }
+
+    if (isGatewayClient){
+        if (client->isQuickstart) {
+            LOG(ERROR, "Quickstart mode is not supported in Gateway Client\n");
+            freeConfig(&configstr);
+            return QUICKSTART_NOT_SUPPORTED;
+        }
+        client->isGateway = 1;
+        LOG(TRACE, "Connecting as a gateway client");
+    } else {
+        client->isGateway = 0;
+        LOG(TRACE, "Connecting as a device client");
+    }
+
+    client->cfg = configstr;
+
+exit:
+    LOG(TRACE,"exit:: rc=%d", rc);
+
+   return rc;
 }
+
+/**
+ * Function used to initialize the Watson IoT client
+ *
+ * @param client - Reference to the Iotfclient
+ * @param org - Your organization ID
+ * @param domain - Your domain Name
+ * @param type - The type of your device
+ * @param id - The ID of your device
+ * @param auth-method - Method of authentication (the only value currently supported is token)
+ * @param auth-token - API key token (required if auth-method is token)
+ * @Param serverCertPath - Custom Server Certificate Path
+ * @Param useCerts - Flag to indicate whether to use client side certificates for authentication
+ * @Param rootCAPath - if useCerts is 1, Root CA certificate Path
+ * @Param clientCertPath - if useCerts is 1, Client Certificate Path
+ * @Param clientKeyPath - if useCerts is 1, Client Key Path
+ * @Param useNXPEngine - if useCerts is 1 and domain is not quickstart, Use NXP SSL Engine
+ *
+ * @return int return code
+ */
+int initialize(iotfclient  *client, char *orgId, char* domainName, char *deviceType,
+    char *deviceId, char *authmethod, char *authToken, char *serverCertPath, int useCerts,
+    char *rootCACertPath, char *clientCertPath,char *clientKeyPath, int isGatewayClient, int useNXPEngine)
+{
+    LOG(TRACE, "entry::");
+
+    Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0};
+    int rc = 0;
+
+    LOG(DEBUG, "org=%s, domain=%s, type=%s, id=%s, token= s, useCerts=%d, serverCertPath=%s",
+               orgId,domainName,deviceType,deviceId,authToken,useCerts,serverCertPath);
+
+    if (orgId == NULL || deviceType == NULL || deviceId == NULL) {
+        rc = MISSING_INPUT_PARAM;
+        goto exit;
+    }
+
+    if (useCerts) {
+        if (rootCACertPath == NULL || clientCertPath == NULL || clientKeyPath == NULL){
+            rc = MISSING_INPUT_PARAM;
+            goto exit;
+        }
+    }
+
+    strCopy(&configstr.org, orgId);
+    strCopy(&configstr.domain,"internetofthings.ibmcloud.com");
+    if(domainName != NULL)
+        strCopy(&configstr.domain, domainName);
+    strCopy(&configstr.type, deviceType);
+    strCopy(&configstr.id, deviceId);
+
+    if ((strcmp(orgId,"quickstart") != 0)) {
+        if (authmethod == NULL || authToken == NULL) {
+            freeConfig(&configstr);
+            rc = MISSING_INPUT_PARAM;
+            goto exit;
+        }
+        strCopy(&configstr.authmethod, authmethod);
+        strCopy(&configstr.authtoken, authToken);
+
+        LOG(DEBUG, "auth-method=%s, token=%s", configstr.authmethod, configstr.authtoken);
+
+        if (serverCertPath == NULL)
+            strCopy(&configstr.serverCertPath,"./IoTFoundation.pem");
+        else
+            strCopy(&configstr.serverCertPath,serverCertPath);
+
+        LOG(DEBUG, "serverCertPath=%s", configstr.serverCertPath);
+
+        if (useCerts) {
+            strCopy(&configstr.rootCACertPath,rootCACertPath);
+            strCopy(&configstr.clientCertPath,clientCertPath);
+            strCopy(&configstr.clientKeyPath,clientKeyPath);
+            configstr.useClientCertificates = 1;
+            LOG(DEBUG, "Use client certificate");
+            LOG(DEBUG, "CACertPath=%s", configstr.rootCACertPath);
+            LOG(DEBUG, "clientCertPath=%s", configstr.clientCertPath);
+            LOG(DEBUG, "clientKeyPath=%s", configstr.clientKeyPath);
+        }
+
+        client->isQuickstart = 0;
+        configstr.port = 8883;
+    } else {
+        client->isQuickstart = 1;
+        LOG(DEBUG, "Connecting to WIoTP quickstart org: port=%d", configstr.port);
+    }
+
+    if (isGatewayClient){
+        if (client->isQuickstart) {
+            LOG(ERROR, "Quickstart mode is not supported in Gateway Client\n");
+            freeConfig(&configstr);
+            return QUICKSTART_NOT_SUPPORTED;
+        }
+        client->isGateway = 1;
+        LOG(DEBUG, "Connecting as a gateway client");
+    } else {
+        client->isGateway = 0;
+        LOG(DEBUG, "Connecting as a device client");
+    }
+
+
+    /* Check if NXP Engine is enabled - NXP Engine is not allowed in quickstart domain or useClientCertificate
+     * is not enabled
+     */
+    if ( configstr.useNXPEngine ) {
+        if ( ! configstr.useClientCertificates ) {
+           freeConfig(&configstr);
+           rc = CONFIG_FILE_ERROR;
+           goto exit;
+        }
+
+        if ( client->isQuickstart == 1 ) {
+           freeConfig(&configstr);
+           rc = QUICKSTART_NOT_SUPPORTED;
+           goto exit;
+        }
+    }
+
+    client->cfg = configstr;
+
+exit:
+    LOG(TRACE,"exit:: rc=%d", rc);
+
+    return rc;
+}
+
+/**
+ * This is the function to read the config from the device.cfg file
+ */
+static int get_config(char * filename, Config * configstr) 
+{
+    LOG(TRACE, "entry::");
+
+    int rc = 0;
+    FILE* prop;
+
+    /* Sanity check */
+    if ( !filename || *filename == '\0') {
+        LOG(ERROR, "Invalid Configuration file path is specified: NULL or empty file path");
+        rc = CONFIG_FILE_ERROR;
+        goto exit;
+    }
+
+    /* Open property file */
+    prop = fopen(filename, "r");
+    if (prop == NULL) {
+        LOG(ERROR, "Failed to open property file. error:%d", errno);
+        rc = CONFIG_FILE_ERROR;
+        goto exit;
+    }
+    char line[256];
+    int linenum = 0;
+    strCopy(&configstr->domain,"internetofthings.ibmcloud.com");
+
+    while (fgets(line, 256, prop) != NULL) {
+        char *prop;
+        char *value;
+        linenum++;
+        if (line[0] == '#')
+            continue;
+
+        prop = strtok(line, "=");
+        prop = trim(prop);
+        value = strtok(NULL, "=");
+        value = trim(value);
+
+        LOG(TRACE, "Config: Property=%s Value=%s",prop,value);
+
+        if (strcmp(prop, "org") == 0) {
+            if (strlen(value) > 1)
+                strCopy(&(configstr->org), value);
+
+            if (strcmp(configstr->org,"quickstart") !=0)
+                configstr->port = 8883;
+
+            LOG(INFO, "org=%s", configstr->org);
+            LOG(INFO, "port=%d", configstr->port);
+
+        } else if (strcmp(prop, "domain") == 0) {
+            if (strlen(value) <= 1)
+                strCopy(&configstr->domain,"internetofthings.ibmcloud.com");
+            else
+                strCopy(&configstr->domain, value);
+
+           LOG(INFO, "domain=%s", configstr->domain);
+
+        } else if (strcmp(prop, "type") == 0) {
+            if (strlen(value) > 1) {
+                strCopy(&configstr->type, value);
+                LOG(INFO, "type=%s", configstr->domain);
+            }
+
+        } else if (strcmp(prop, "id") == 0) {
+            if (strlen(value) > 1) {
+                strCopy(&configstr->id, value);
+                LOG(INFO, "id=%s", configstr->id);
+            }
+
+        } else if (strcmp(prop, "auth-token") == 0) {
+            if (strlen(value) > 1) {
+                strCopy(&configstr->authtoken, value);
+                LOG(INFO, "auth-token=XXXXXX");
+            }
+
+        } else if (strcmp(prop, "auth-method") == 0) {
+            if(strlen(value) > 1) {
+                strCopy(&configstr->authmethod, value);
+                LOG(INFO, "auth_token=%s", configstr->authmethod);
+            }
+
+        } else if (strcmp(prop, "serverCertPath") == 0){
+            if(strlen(value) <= 1)
+                getServerCertPath(&configstr->serverCertPath);
+           else
+              strCopy(&configstr->serverCertPath, value);
+
+           LOG(TRACE, "serverCertPath=%s", configstr->serverCertPath);
+
+        } else if (strcmp(prop, "rootCACertPath") == 0){
+            if(strlen(value) > 1) {
+                strCopy(&configstr->rootCACertPath, value);
+                LOG(INFO, "rootCACertPath=%s", configstr->rootCACertPath);
+            }
+
+        } else if (strcmp(prop, "clientCertPath") == 0){
+            if(strlen(value) > 1) {
+                strCopy(&configstr->clientCertPath, value);
+                LOG(INFO, "clientCertPath=%s", configstr->clientCertPath);
+            }
+
+        } else if (strcmp(prop, "clientKeyPath") == 0){
+            if(strlen(value) > 1) {
+                strCopy(&configstr->clientKeyPath, value);
+                LOG(INFO, "clientKeyPath=%s", configstr->clientKeyPath);
+            }
+
+        } else if (strcmp(prop,"useClientCertificates") == 0){
+            configstr->useClientCertificates = value[0] - '0';
+            LOG(INFO, "useClientCertificates=%d", configstr->useClientCertificates);
+
+        } else if (strcmp(prop,"useNXPEngine") == 0){
+            configstr->useNXPEngine = value[0] - '0';
+            LOG(INFO, "Config: useNXPEngine=%d ",configstr->useNXPEngine);
+        }
+    }
+
+exit:
+    LOG(TRACE,"exit:: rc=%d", rc);
+    return rc;
+}
+
+/**
+ * Callback function to handle connection lose cases
+ */
+void connlost(void *context, char *cause)
+{
+    LOG(TRACE, "entry::");
+    LOG(WARN, "IoTF client connection is lost. Cause=%s", cause);
+    LOG(TRACE, "exit::");
+}
+
+/**
+ * Function used to connect to the IBM Watson IoT client
+ * @param client - Reference to the Iotfclient
+ *
+ * @return int return code
+ */
+int connectiotf(iotfclient  *client)
+{
+    LOG(TRACE, "entry::");
+
+    int rc = 0;
+
+    MQTTClient mqttClient;
+    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    MQTTClient_SSLOptions ssl_opts = MQTTClient_SSLOptions_initializer;
+
+    int useCerts = client->cfg.useClientCertificates;
+    int isGateway = client->isGateway;
+    int qsMode = client->isQuickstart;
+    int port = client->cfg.port;
+
+    LOG(DEBUG, "useCerts:%d, isGateway:%d, qsMode:%d", useCerts, isGateway, qsMode);
+
+    char messagingUrl[120];
+    sprintf(messagingUrl, ".messaging.%s",client->cfg.domain);
+    char hostname[strlen(client->cfg.org) + strlen(messagingUrl) + 1];
+    sprintf(hostname, "%s%s", client->cfg.org, messagingUrl);
+    int clientIdLen =  strlen(client->cfg.org) + strlen(client->cfg.type) + strlen(client->cfg.id) + 5;
+    char *clientId = malloc(clientIdLen);
+
+    if (isGateway)
+        sprintf(clientId, "g:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
+    else
+        sprintf(clientId, "d:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
+
+    LOG(INFO, "messagingUrl=%s", messagingUrl);
+    LOG(INFO, "hostname=%s", hostname);
+    LOG(INFO, "port=%d", port);
+    LOG(INFO, "clientId=%s", clientId);
+
+    /* create MQTT Client */
+    char connectionUrl[strlen(hostname) + 14];
+    if ( port == 1883 )
+       sprintf(connectionUrl, "tcp://%s:%d", hostname, port);
+    else
+       sprintf(connectionUrl, "ssl://%s:%d", hostname, port);
+
+    LOG(INFO, "connectionUrl=%s", connectionUrl);
+
+    /* If useNXPEngine is enabled set environment variable to load NXP engine */
+    if ( client->cfg.useNXPEngine ) {
+        char * envval;
+        envval = getenv ("OPENSSL_CONF");
+
+        if ( envval && *envval != '\0' && strstr(envval, "A71CH")) {
+            LOG(INFO, "Library is already set to use NXP Openssl Engine.");
+        } else {
+            setenv ("OPENSSL_CONF", "/etc/ssl/opensslA71CH_i2c.cnf", 1);
+            LOG(INFO, "Library is set to use NXP Openssl Engine.");
+        }
+    }
+
+    rc = MQTTClient_create(&mqttClient, connectionUrl, clientId, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+    if ( rc != 0 ) {
+        LOG(WARN, "RC from MQTTClient_create:%d",rc);
+        goto exit;
+    }
+
+    client->c = mqttClient;
+
+    /* set connection options */
+    conn_opts.keepAliveInterval = keepAliveInterval;
+    conn_opts.reliable = 0;
+    conn_opts.cleansession = 1;
+    ssl_opts.enableServerCertAuth = 0;
+
+    if (!qsMode && client->cfg.authtoken ) {
+        conn_opts.username = "use-token-auth";
+        conn_opts.password = client->cfg.authtoken;
+    }
+
+    if ( port != 1883 ) {
+        conn_opts.ssl = &ssl_opts;
+        if (useCerts) {
+            conn_opts.ssl->enableServerCertAuth = 1;
+            conn_opts.ssl->trustStore = client->cfg.rootCACertPath;
+            conn_opts.ssl->keyStore = client->cfg.clientCertPath;
+            conn_opts.ssl->privateKey = client->cfg.clientKeyPath;
+        }
+    }
+
+    /* Set callbacks */
+    MQTTClient_setCallbacks(client->c, NULL, connlost, messageArrived, messageDelivered);
+           
+    if ((rc = MQTTClient_connect(client->c, &conn_opts)) == MQTTCLIENT_SUCCESS) {
+        if (qsMode) {
+            LOG(INFO, "Device Client Connected to %s Platform in QuickStart Mode\n",hostname);
+        } else {
+            char *clientType = (isGateway)?"Gateway Client":"Device Client";
+            char *connType = (useCerts)?"Client Side Certificates":"Secure Connection";
+            LOG(INFO, "%s Connected to %s using %s\n", clientType, hostname, connType);
+        }
+    }
+
+exit:
+    if (rc != 0) {
+        freeConfig(&client->cfg);
+    }
+
+    LOG(TRACE, "exit:: rc=%d", rc);
+    return rc;
+}
+
 
 /**
 * Function used to publish the given data to the topic with the given QoS
@@ -542,27 +517,28 @@ exit:
 *
 * @return int - Return code from MQTT Publish
 **/
-int publishData(iotfclient *client, char *topic, char *payload, int qos){
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"entry::");
+int publishData(iotfclient *client, char *topic, char *payload, int qos)
+{
+    LOG(TRACE, "entry::");
 
-       int rc = -1;
-       int payloadlen = strlen(payload);
-       int retained = '0';
+    int rc = -1;
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
+    int payloadlen = strlen(payload);
 
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"MQTTMessage = { qos: %d  retained: %d  payload: %s  payloadLen: %d}",
-                        qos,retained,payload,payloadlen);
-       LOG(logHdr,logStr);
+    pubmsg.payload = payload;
+    pubmsg.payloadlen = payloadlen;
+    pubmsg.qos = qos;
+    pubmsg.retained = 0;
 
-       rc = MQTTClient_publish(client->c, topic, payloadlen, payload, qos, retained, NULL);
+    LOG(DEBUG, "Publish Message: qos=%d retained=%d payloadlen=%d payload: %s",
+                    pubmsg.qos, pubmsg.retained, pubmsg.payloadlen, payload);
 
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"rc = %d",rc);
-       LOG(logHdr,logStr);
-       LOG(logHdr,"exit::");
+    rc = MQTTClient_publishMessage(client->c, topic, &pubmsg, &token);
+    LOG(DEBUG, "Message with delivery token %d delivered\n", token);
 
-       return(rc);
+    LOG(TRACE, "exit:: rc=%d", rc);
+    return rc;
 }
 
 /**
@@ -572,19 +548,12 @@ int publishData(iotfclient *client, char *topic, char *payload, int qos){
 */
 int yield(iotfclient  *client, int time_ms)
 {
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"entry::");
+    LOG(TRACE, "entry::");
 
-       int rc = 0;
-       // rc = MQTTYield(&client->c, time_ms);
-       rc = usleep(time_ms * 1000);
+    int rc = usleep(time_ms * 1000);
 
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"rc = %d",rc);
-       LOG(logHdr,logStr);
-       LOG(logHdr,"exit::");
-
-       return rc;
+    LOG(TRACE, "exit:: rc=%d", rc);
+    return rc;
 }
 
 /**
@@ -594,44 +563,105 @@ int yield(iotfclient  *client, int time_ms)
 */
 int isConnected(iotfclient  *client)
 {
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-        LOG(logHdr,"entry::");
+    LOG(TRACE, "entry::");
 
-       int result = MQTTClient_isConnected(client->c);
+    int rc = MQTTClient_isConnected(client->c);
 
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"isConnected = %d",result);
-       LOG(logHdr,logStr);
-       LOG(logHdr,"exit::");
-
-       return result;
+    LOG(TRACE, "exit:: rc=%d", rc);
+    return rc;
 }
+
+/**
+ * Function used to set the Command Callback function. This must be set if you to recieve commands.
+ *
+ * @param cb - A Function pointer to the commandCallback. Its signature - void (*commandCallback)(char* commandName, char* pay
+ * @return int return code
+ */
+void setCommandHandler(iotfclient  *client, commandCallback handler)
+{
+    LOG(TRACE, "entry::");
+
+    cb = handler;
+
+    if (cb != NULL){
+        LOG(DEBUG, "Registered callabck to process the arrived message");
+    } else {
+        LOG(DEBUG, "Callabck not registered to process the arrived message");
+    }
+
+    LOG(TRACE, "exit::");
+}
+
+/* Handle Message Delivery notices */
+static void messageDelivered(void *context, MQTTClient_deliveryToken dt)
+{
+    LOG(TRACE, "entry::");
+    LOG(DEBUG, "Message delivery confirmed. token=%d", dt);
+    LOG(TRACE, "exit::");
+}
+
+/* Handler for all commands. Invoke the callback. */
+static int messageArrived(void *context, char *topicName, int topicLen, MQTTClient_message * message)
+{
+    LOG(TRACE, "entry::");
+
+    if (cb != 0) {
+        char topic[4096];
+        sprintf(topic,"%s",topicName);
+        void *payload = message->payload;
+
+        LOG(TRACE, "Topic:%s  Payload:%s", topic, (char *)payload);
+
+        size_t payloadlen = message->payloadlen;
+
+        strtok(topic, "/");
+        strtok(NULL, "/");
+
+        char *type = strtok(NULL, "/");
+        strtok(NULL, "/");
+        char *id = strtok(NULL, "/");
+        strtok(NULL, "/");
+        char *commandName = strtok(NULL, "/");
+        strtok(NULL, "/");
+        char *format = strtok(NULL, "/");
+
+        LOG(TRACE, "Calling registered callabck to process the arrived message");
+
+        (*cb)(type,id,commandName, format, payload,payloadlen);
+
+        MQTTClient_freeMessage(&message);
+        MQTTClient_free(topicName);
+    } else {
+        LOG(TRACE, "No registered callback function to process the arrived message");
+    }
+
+    LOG(TRACE, "exit::");
+    return 1;
+}
+
 
 /**
 * Function used to disconnect from the IBM Watson IoT service
 *
 * @return int return code
 */
-
 int disconnect(iotfclient  *client)
 {
-        sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-        LOG(logHdr,"entry::");
+    LOG(TRACE, "entry::");
 
-       int rc = 0;
-       if (isConnected(client)) {
-	  rc = MQTTClient_disconnect(client->c, 0);
-       }
-       // MQTTClient_destroy(client->c);
-       freeConfig(&(client->cfg));
+    int rc = 0;
+    if (isConnected(client)) {
+        rc = MQTTClient_disconnect(client->c, 10000);
 
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       sprintf(logStr,"rc = %d",rc);
-       LOG(logHdr,logStr);
-       LOG(logHdr,"exit::");
+        /* Free gateway subscription list if set */
+        freeGatewaySubscriptionList(client);
+    }
 
-       return rc;
+    // MQTTClient_destroy(client->c);
+    freeConfig(&(client->cfg));
 
+    LOG(TRACE, "exit:: %d", rc);
+    return rc;
 }
 
 /**
@@ -641,42 +671,50 @@ int disconnect(iotfclient  *client)
 */
 void setKeepAliveInterval(unsigned int keepAlive)
 {
-       keepAliveInterval = keepAlive;
-
+    LOG(TRACE, "entry::");
+    keepAliveInterval = keepAlive;
+    LOG(TRACE, "exit::");
 }
 
-//Staggered retry
+/**
+ * Retry connection
+ */
 int retry_connection(iotfclient  *client)
 {
-       int retry = 1;
-       int rc = -1;
+    LOG(TRACE, "entry::");
 
-       while((rc = connectiotf(client)) != SUCCESS)
-       {
-	       printf("Retry Attempt #%d ", retry);
-	       int delay = reconnect_delay(retry++);
-	       printf(" next attempt in %d seconds\n", delay);
-	       sleep(delay);
-       }
-       return rc;
+    int retry = 1;
+    int rc = -1;
+
+    while((rc = connectiotf(client)) != MQTTCLIENT_SUCCESS)
+    {
+        LOG(DEBUG, "Retry Attempt #%d ", retry);
+        int delay = reconnect_delay(retry++);
+        LOG(DEBUG, " next attempt in %d seconds\n", delay);
+        sleep(delay);
+    }
+
+    LOG(TRACE, "exit:: %d", rc);
+    return rc;
 }
 
-void freeConfig(Config *cfg){
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"entry::");
+/*
+ * Free configuration structure
+ */
+static void freeConfig(Config *cfg)
+{
+    LOG(TRACE, "entry::");
 
-       freePtr(cfg->org);
-       freePtr(cfg->domain);
-       freePtr(cfg->type);
-       freePtr(cfg->id);
-       freePtr(cfg->authmethod);
-       freePtr(cfg->authtoken);
-       freePtr(cfg->rootCACertPath);
-       freePtr(cfg->clientCertPath);
-       freePtr(cfg->clientKeyPath);
+    freePtr(cfg->org);
+    freePtr(cfg->domain);
+    freePtr(cfg->type);
+    freePtr(cfg->id);
+    freePtr(cfg->authmethod);
+    freePtr(cfg->authtoken);
+    freePtr(cfg->rootCACertPath);
+    freePtr(cfg->clientCertPath);
+    freePtr(cfg->clientKeyPath);
 
-       sprintf(logHdr,"%s:%d:%s:",__FILE__,__LINE__,__func__);
-       LOG(logHdr,"exit::");
-
-       disableLogging();
+    LOG(TRACE, "exit::");
 }
+

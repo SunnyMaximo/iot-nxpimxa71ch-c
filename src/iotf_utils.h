@@ -23,42 +23,33 @@
  *    Ranjan Dasgupta         - Initial changes to support NXP Engine
  *
  *******************************************************************************/
- #ifndef IOTF_UTILS_H_
- #define IOTF_UTILS_H_
+#ifndef IOTF_UTILS_H_
+#define IOTF_UTILS_H_
 
- #include<stdlib.h>
- #include<stdio.h>
- #include<string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <libgen.h>
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <ctype.h>
 
- #define LOG(logHeader,msg)       if(logger != NULL) fprintf(logger,"%s:%s\n",logHeader,msg);
- #define LOG_BUF 512
+#define LOG(sev, fmts...) \
+        logInvoke((LOGLEVEL_##sev), __FUNCTION__, __FILE__, __LINE__, fmts);
 
- extern FILE *logger;
+extern FILE *logger;
 
- typedef enum
- {
-     QOS0,
-     QOS1,
-     QOS2
- } QoS;
-
-#define SUCCESS 0
-
-//Utility Functions
- void enableLogging();
- void disableLogging();
- void getServerCertPath(char** path);
- void getSamplesPath(char** path);
- void getTestCfgFilePath(char** cfgFilePath, char* fileName);
- void buildPath(char **ptr, char *path);
- char *trim(char *str);
- void strCopy(char **dest, char *src);
- int reconnect_delay(int i);
- void freePtr(char* p);
+/* Utility functions */
+void logInvoke(const LOGLEVEL level, const char * func, const char * file, int line, const char * fmts, ...);
+void getServerCertPath(char** path);
+void getTestCfgFilePath(char** cfgFilePath, char* fileName);
+void buildPath(char **ptr, char *path);
+char *trim(char *str);
+void strCopy(char **dest, char *src);
+int reconnect_delay(int i);
+void freePtr(char* p);
 
  #endif
