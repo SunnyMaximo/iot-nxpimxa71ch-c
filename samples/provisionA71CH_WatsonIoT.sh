@@ -316,8 +316,8 @@ fi
 # Create serial number of gateway and device certificates
 # for device  1${SE_UID}
 # for gateway 2${SE_UID}
-deviceSerial="1${SE_UID}"
-gatewaySerial="2${SE_UID}"
+deviceSerial="0x01${SE_UID}"
+gatewaySerial="0x02${SE_UID}"
 
 # Unique ID Key, reference key and CSR files
 uidKey="${SE_UID}.key"
