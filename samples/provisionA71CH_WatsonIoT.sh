@@ -34,11 +34,11 @@
 #                     For device:  <uuid>_device_ec_pem.crt
 #                     For gateway:  <uuid>_gateway_ec_pem.crt
 #                   - Added variable for CA and Client ceritificate validity period
-#                   - Adds <uuid>_device_ec_pem.crt in SE slot 1 i.e. -x 0
-#                   - Adds <uuid>_gateway_ec_pem.crt in SE slot 0 i.e. -x 1
+#                   - Adds <uuid>_device_ec_pem.crt in SE slot 0 i.e. -x 0
+#                   - Adds <uuid>_gateway_ec_pem.crt in SE slot 1 i.e. -x 1
 #                   - Sets Device and Gateway certificate serial number is in the following format:
-#                     For device  1<Secure_Element_UID>
-#                     For gateway 2<Secure_Element_UID>
+#                     For device  0x01<Secure_Element_UID>
+#                     For gateway 0x02<Secure_Element_UID>
 #
 #########################################################################################################
 ##
