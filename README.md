@@ -147,7 +147,7 @@ type=NXP-A71CH-D
 id=<your device id - returned by A71CH provisioning script>
 useClientCertificates=1
 clientCertPath=/home/root/tools/<your device id>_device_ec_pem.crt
-clientKeyPath=/home/root/tools/<your device id>_device.ref_key
+clientKeyPath=/home/root/tools/<your device id>.ref_key
 rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
 useNXPEngine=1
 ```
@@ -171,7 +171,7 @@ type=NXP-A71CH-G
 id=<your gateway id - returned by A71CH provisioning script>
 useClientCertificates=1
 clientCertPath=/home/root/tools/<your gateway id>_gateway_ec_pem.crt
-clientKeyPath=/home/root/tools/<your gateway id>_gateway.ref_key
+clientKeyPath=/home/root/tools/<your gateway id>.ref_key
 rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
 useNXPEngine=1
 ```

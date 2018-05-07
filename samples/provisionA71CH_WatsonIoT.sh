@@ -2,7 +2,7 @@
 #
 # Name: provisionA71CH_WatsonIoT.sh
 # Revision: 0.xx
-# Date: April 11, 2018
+# Date: May 3, 2018
 # 
 #########################################################################################################
 # Script to create and configure NXP A71CH Secure Element to work with Watson IoT platform
@@ -40,6 +40,8 @@
 #                     For device  0x01<Secure_Element_UID>
 #                     For gateway 0x02<Secure_Element_UID>
 #
+#                   - Ensuring Intermediate CA is used when requested.
+#
 #########################################################################################################
 ##
 
@@ -58,7 +60,7 @@ gwType="NXP-A71CH-G"
 #
 # For root CA
 #
-ROOT_CA_CN="NXP Semiconductors DEMO rootCA v E"
+ROOT_CA_CN="NXP Semiconductors rootCA v E"
 CA_EXISTS="FALSE"
 CA_ENC_TYPE="ECC"             # Options are RSA or ECC
 CA_ECC_CURVE="prime256v1"     # Only used if CA_ENC_TYPE is ECC
@@ -67,8 +69,8 @@ CA_ECC_CURVE="prime256v1"     # Only used if CA_ENC_TYPE is ECC
 # For intermediate CA - Intermediate CA will be signed by root CA
 #
 CREATE_INTERMEDIATE_CA="TRUE"
-INTERMEDIATE_CA_CN="NXP Semiconductors DEMO intermediateCA v E"
-INTERMEDIATE_CA="FALSE"
+INTERMEDIATE_CA_CN="NXP Semiconductors interCA v E"
+INTERMEDIATE_CA_EXISTS="FALSE"
 INTERMEDIATE_CA_ENC_TYPE="ECC"            # Supported type for intermedite CA is ECC
 INTERMEDIATE_CA_ECC_CURVE="prime256v1"    # Only used if INTERMEDIATE_CA_ENC_TYPE is ECC
 #
@@ -162,12 +164,12 @@ if [ "${CA_EXISTS}" != "TRUE" ]; then
         echo "## Create RSA Root CA Key: (${rootcaKey})"
         xCmd "openssl genrsa -out ${rootcaKey} 4096"
         echo "## Create RSA Root CA Certificate: (${rootcaCert})"
-        openssl req -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
+        openssl req -config ./openssl.cnf -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
     fi
 
     if [ ! -e ${rootcaCert} ]; then
         echo "## Create ECC Root CA Certificate: (${rootcaCert}); Root CA keypair was already present"
-        openssl req -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
+        openssl req -config ./openssl.cnf -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
     fi
 
   else
@@ -179,12 +181,12 @@ if [ "${CA_EXISTS}" != "TRUE" ]; then
         echo "## Create ECC Root CA Key: (${rootcaKey}) Curve: (${CA_ECC_CURVE})"
         xCmd "openssl ecparam -genkey -name ${CA_ECC_CURVE} -out ${rootcaKey}"
         echo "## Create ECC Root CA Certificate: (${rootcaCert})"
-        openssl req -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
+        openssl req -config ./openssl.cnf -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
     fi
 
     if [ ! -e ${rootcaCert} ]; then
         echo "## Create ECC Root CA Certificate: (${rootcaCert}); Root CA keypair was already present"
-        openssl req -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
+        openssl req -config ./openssl.cnf -x509 -new -nodes -key ${rootcaKey} -sha256 -days ${CA_CERT_VALIDITY} -out ${rootcaCert} -subj "/CN=${ROOT_CA_CN}"
     fi
 
   fi
@@ -224,7 +226,7 @@ else
     x509_serial="-CAcreateserial"
 fi
 
-SIGNED_BY_INTERMEDIATE_CA="FALSE"
+SIGN_BY_INTERMEDIATE_CA="FALSE"
 
 echo "## CREATE_INTERMEDIATE_CA = ${CREATE_INTERMEDIATE_CA}"
 
@@ -298,7 +300,7 @@ then
 
   fi
 
-  SIGNED_BY_INTERMEDIATE_CA="TRUE"
+  SIGN_BY_INTERMEDIATE_CA="TRUE"
 
 fi
 
@@ -307,7 +309,7 @@ fi
 # Create key and device/gateway certificates
 ############################################
 
-if [ "${SIGNED_BY_INTERMEDIATE_CA}" == "TRUE" ]; then
+if [ "${SIGN_BY_INTERMEDIATE_CA}" == "TRUE" ]; then
 
     # Create Chain of CA Certificates for WIoTP CA Certificate upload step
     cat ${intercaCert} ${rootcaCert} > ${chaincaCert}
@@ -356,7 +358,7 @@ echo "# keyUsage = nonRepudiation, digitalSignature, keyEncipherment" >> v3_ext.
 echo "keyUsage = digitalSignature"                  >> v3_ext.cnf
 echo "subjectAltName = ${SAN_D_val}"                >> v3_ext.cnf
 
-if [ "${SIGN_BY_INTERMEDIATE}" == "TRUE" ]; then
+if [ "${SIGN_BY_INTERMEDIATE_CA}" == "TRUE" ]; then
     # Create a Cert signed by Intermediate CA
     xCmd "openssl x509 -req -days ${CLIENT_CERT_VALIDITY} -in ${uidCsr} -set_serial ${deviceSerial} -CA ${intercaCert} -CAkey ${intercaKey} \
         -extfile ./v3_ext.cnf -extensions v3_req -out ${deviceCert}"
@@ -378,7 +380,7 @@ echo "basicConstraints = CA:FALSE"                  >> v3_ext.cnf
 echo "# keyUsage = nonRepudiation, digitalSignature, keyEncipherment" >> v3_ext.cnf
 echo "keyUsage = digitalSignature"                  >> v3_ext.cnf
 echo "subjectAltName = ${SAN_G_val}"                >> v3_ext.cnf
-if [ "${SIGN_BY_INTERMEDIATE}" == "TRUE" ]; then
+if [ "${SIGN_BY_INTERMEDIATE_CA}" == "TRUE" ]; then
     # Create a Cert signed by Intermediate CA
     xCmd "openssl x509 -req -days ${CLIENT_CERT_VALIDITY} -in ${uidCsr} -set_serial ${gatewaySerial} -CA ${intercaCert} -CAkey ${intercaKey} \
         -extfile ./v3_ext.cnf -extensions v3_req -out ${gatewayCert}"

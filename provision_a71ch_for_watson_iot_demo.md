@@ -36,7 +36,7 @@ the different steps outlined here starting from section 2.3.
 
 To use the script copy it onto the embedded file system of the MCIMX6UL-EVKB board in directory /home/root/tools. Ensure the script has execution rights set and invoke it from the /home/root/tools directory.
 
-### 2.2 Create a Root CA keypair and certificate once
+### 2.2 Create a Root and Intermediate CA keypair and certificate once
 
 For the purpose of the demo ensure you only create Root CA keypair and certificate once. In case you already have a Root CA keypair and certificate available, you can skip this step.
 	
