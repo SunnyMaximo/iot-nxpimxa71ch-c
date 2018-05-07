@@ -42,6 +42,7 @@ install: build
 	@mkdir -p /usr/local/lib
 	@mkdir -p /usr/local/include
 	@if [ -d "paho.mqtt.c-1.2.0" ]; then make -C paho.mqtt.c-1.2.0 install CLIENTDIR=$(CLIENTDIR); fi
+	@if [ -d "paho.mqtt.c-1.2.0" ]; then make -C paho.mqtt.c-1.2.0 enable-libs CLIENTDIR=$(CLIENTDIR); fi
 
 uninstall:
 	@echo "Uninstall packages"

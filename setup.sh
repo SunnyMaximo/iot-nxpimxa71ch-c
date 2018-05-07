@@ -145,6 +145,9 @@ install-iotf: build
 	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.pem \$(CLIENTDIR)certs/.
 	\$(INSTALL_DATA) \${wiotp_samplesdir}/*.cfg \$(CLIENTDIR)config/.
 
+enable-libs:
+	\$(LDCONFIG) \$(DESTDIR)\${libdir}
+
 uninstall-iotf:
 	-rm \$(DESTDIR)\${includedir}/iotfclient.h
 	-rm \$(DESTDIR)\${includedir}/iotf_utils.h

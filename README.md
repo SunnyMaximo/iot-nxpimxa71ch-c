@@ -122,22 +122,28 @@ for advanced security"* in the following link:
 
 ### Register Device Typies and Devices:
 
-Follow Step 1 described in the following link to register NXP-A71CH-D generic device type 
-and your device ID, as returned by the provisioning script "provisionA71CH_WatsonIoT.sh" 
-described in Step 2 of 
-[A71CH provisioning process](./provision_a71ch_for_watson_iot_demo.md) document ) 
-with Watson IoT Platform:
+Devices installed with A71CH Secure Element can be configured as Watson IoT Platform device or Gateway.
+Use the following link to register your device or gateway:
 
-[Step 1: Registering your device with Watson IoT Platform](https://console.bluemix.net/docs/services/IoT/iotplatform_task.html#iotplatform_task)
+[Registering your device with Watson IoT Platform](https://console.bluemix.net/docs/services/IoT/iotplatform_task.html#iotplatform_task)
 
+If you want to configure and connect a device, register *NXP-A71CH-D* as a generic device type.
+If you want to configure and connect a gateway, register *NXP-A71CH-G* as a generic gateway type.
+For device or gateway ID, use ID returned by the provisioning script "provisionA71CH_WatsonIoT.sh"
+(described in Step 2 of 
+[A71CH provisioning process](./provision_a71ch_for_watson_iot_demo.md) document with Watson IoT Platform).
 
-### Configure device
+### Configure and Connect device or gateway
 
-Update device configuration file: On device system, edit *device_a71ch.cfg* file in */opt/iotnxpimxclient/config* directory:
+The project contains samples client code for a device and a gateway.
+
+#### Configure Sample Device
+
+Edit sample device configuration file *device_a71ch.cfg* file in */opt/iotnxpimxclient/config* directory:
 
 ```
 org=<orgid>
-type=NXP-A71CH
+type=NXP-A71CH-D
 id=<your device id - returned by A71CH provisioning script>
 useClientCertificates=1
 clientCertPath=/home/root/tools/<your device id>_device_ec_pem.crt
@@ -146,13 +152,37 @@ rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
 useNXPEngine=1
 ```
 
-### Connect client 
+#### Connect Sample Device Client
 
-Use the following commands to connect your sample client to Watson IoT Platform:
+Use the following commands to connect your sample device client to Watson IoT Platform:
 
 ```
 cd /opt/iotnxpimxclient/bin
-./helloWorld --config /opt/iotnxpimxclient/config/device_a71ch.cfg
+./deviceSample --config /opt/iotnxpimxclient/config/device_a71ch.cfg
+```
+
+#### Configure Sample Gateway
+
+Edit sample gateway configuration file *gateway_a71ch.cfg* file in */opt/iotnxpimxclient/config* directory:
+
+```
+org=<orgid>
+type=NXP-A71CH-G
+id=<your gateway id - returned by A71CH provisioning script>
+useClientCertificates=1
+clientCertPath=/home/root/tools/<your gateway id>_gateway_ec_pem.crt
+clientKeyPath=/home/root/tools/<your gateway id>_gateway.ref_key
+rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
+useNXPEngine=1
+```
+
+#### Connect Sample Gateway Client
+
+Use the following commands to connect your sample gateway client to Watson IoT Platform:
+
+```
+cd /opt/iotnxpimxclient/bin
+./gatewaySample --config /opt/iotnxpimxclient/config/gateway_a71ch.cfg
 ```
 
 
