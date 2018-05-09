@@ -255,21 +255,21 @@ then
         if [ ! -e ${intercaKey} ]
         then
             # Create both the CA keypair and CA certificate
-            # The interemediate CA is ECC using curve defined in INTERMEDIATE_CA_ECC_CURVE variable
+            # The intermediate CA is ECC using curve defined in INTERMEDIATE_CA_ECC_CURVE variable
             echo "## Create ECC intermediate CA Key: (${intercaKey}) Curve: (${INTERMEDIATE_CA_ECC_CURVE})"
             xCmd "openssl ecparam -genkey -name ${INTERMEDIATE_CA_ECC_CURVE} -out ${intercaKey}"
-            echo "## Create RSA Intermediate CA CSR: (${intercaCsr})"
+            echo "## Create ECC Intermediate CA CSR: (${intercaCsr})"
             openssl req -new -key ${intercaKey} -out ${intercaCsr} -subj "/CN=${INTERMEDIATE_CA_CN}"
             echo "## Sign Intermediate CA CSR with (${rootcaCert})"
-            openssl x509 -req -days ${CA_CERT_VALIDITY} -in ${intercaCsr} "${x509_serial}" -CA ${rootcaCert} \
+            openssl x509 -req -days ${CA_CERT_VALIDITY} -in ${intercaCsr} ${x509_serial} -CA ${rootcaCert} \
                 -CAkey ${rootcaKey}  -extfile ./v3_ext.cnf -extensions v3_req -out ${intercaCert}
         fi
 
         if [ ! -e ${intercaCert} ]; then
-            echo "## Create RSA Intermediate CA CSR: (${intercaCsr})"
+            echo "## Create ECC Intermediate CA CSR: (${intercaCsr})"
             openssl req -new -key ${intercaKey} -out ${intercaCsr} -subj "/CN=${INTERMEDIATE_CA_CN}"
             echo "## Sign Intermediate CA CSR with (${rootcaCert})"
-            openssl x509 -req -days ${CA_CERT_VALIDITY} -in ${intercaCsr} "${x509_serial}" -CA ${rootcaCert} \
+            openssl x509 -req -days ${CA_CERT_VALIDITY} -in ${intercaCsr} ${x509_serial} -CA ${rootcaCert} \
                 -CAkey ${rootcaKey}  -extfile ./v3_ext.cnf -extensions v3_req -out ${intercaCert}
         fi
 
