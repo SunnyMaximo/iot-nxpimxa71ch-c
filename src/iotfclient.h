@@ -49,7 +49,7 @@ typedef enum LOGLEVEL {
     LOGLEVEL_TRACE   = 5
 } LOGLEVEL;
 
-enum errorCodes { CONFIG_FILE_ERROR = -3, MISSING_INPUT_PARAM = -4, QUICKSTART_NOT_SUPPORTED = -5 };
+enum errorCodes { CONFIG_FILE_ERROR = -3, MISSING_INPUT_PARAM = -4, QUICKSTART_NOT_SUPPORTED = -5, SE_CERT_ERROR = -6 };
 
 typedef enum { QoS0, QoS1, QoS2 } QoS;
 
@@ -72,6 +72,7 @@ struct iotf_config
        int port;
        int useClientCertificates;
        int useNXPEngine;
+       int useCertsFromSE;
 };
 
 typedef struct iotf_config Config;
@@ -108,12 +109,14 @@ typedef void (*commandCallback)(char* type, char* id, char* commandName, char *f
 * @Param clientKeyPath - if useCerts is 1, Client Key Path
 * @Param isGatewayClient - 0 for device client or 1 for gateway client
 * @Param useNXPEngine - Flag to indicate whether to use NXP Engine
+* @Param useCertsFromSE - Flag to indicate whether to retrieve client certificates and public key from SE
 *
 * @return int return code
 */
 DLLExport int initialize(iotfclient *client, char *orgId, char *domain, char *deviceType, char *deviceId,
               char *authmethod, char *authtoken, char *serverCertPath, int useCerts,
-              char *rootCAPath, char *clientCertPath,char *clientKeyPath, int isGatewayClient, int useNXPEngine);
+              char *rootCAPath, char *clientCertPath,char *clientKeyPath, int isGatewayClient, 
+              int useNXPEngine, int useCertsFromSE);
 
 /**
 * Function used to initialize the IBM Watson IoT client using the config file which is generated when you register your device
@@ -166,11 +169,10 @@ DLLExport int isConnected(iotfclient *client);
 
 /**
 * Function used to Yield for commands.
-* @param client - Reference to the Iotfclient
 * @param time_ms - Time in milliseconds
 * @return int return code
 */
-DLLExport int yield(iotfclient *client, int time_ms);
+DLLExport int yield(int time_ms);
 
 /**
 * Function used to disconnect from the IBM Watson IoT service
@@ -276,5 +278,8 @@ DLLExport int retry_connection(iotfclient  *client);
 DLLExport int reconnect_delay(int i);
 
 DLLExport int subscribeToGatewayNotification(iotfclient  *client);
+
+/** Retrieve certificates and key from Secure Element using NXP A71CH APIs */
+DLLExport char * a71ch_retrieveCertificatesFromSE(char * certDir);
 
 #endif /* IOTCLIENT_H_ */

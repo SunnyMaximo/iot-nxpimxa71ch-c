@@ -59,7 +59,7 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
 {
     LOG(TRACE, "entry::");
 
-    Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0};
+    Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0, 0};
 
     int rc = get_config(configFilePath, &configstr);
     if (rc != MQTTCLIENT_SUCCESS) {
@@ -80,7 +80,7 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
 
     /* Validate input - for missing configuration data */
     if ((configstr.org == NULL || configstr.type == NULL || configstr.id == NULL) ||
-        (client->isQuickstart == 0 && configstr.useClientCertificates && 
+        (client->isQuickstart == 0 && configstr.useClientCertificates && configstr.useCertsFromSE == 0 &&
          (configstr.rootCACertPath == NULL || configstr.clientCertPath == NULL || configstr.clientKeyPath == NULL))) 
     {
         rc = MISSING_INPUT_PARAM;
@@ -89,6 +89,7 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
     }
 
     LOG(INFO, "useCertificates=%d", configstr.useClientCertificates);
+    LOG(INFO, "useCertsFromSE=%d", configstr.useCertsFromSE);
 
     /* Check if NXP Engine is enabled - NXP Engine is not allowed in quickstart domain or useClientCertificate
      * is not enabled
@@ -109,8 +110,8 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
 
     if (configstr.useClientCertificates){
        LOG(INFO, "CACertPath=%s", configstr.rootCACertPath);
-       LOG(INFO, "clientCertPath=%s", configstr.clientCertPath);
-       LOG(INFO, "clientKeyPath=%s", configstr.clientKeyPath);
+       LOG(INFO, "clientCertPath=%s", configstr.clientCertPath?configstr.clientCertPath:"");
+       LOG(INFO, "clientKeyPath=%s", configstr.clientKeyPath?configstr.clientKeyPath:"");
     }
 
     if (isGatewayClient){
@@ -150,20 +151,22 @@ exit:
  * @Param clientCertPath - if useCerts is 1, Client Certificate Path
  * @Param clientKeyPath - if useCerts is 1, Client Key Path
  * @Param useNXPEngine - if useCerts is 1 and domain is not quickstart, Use NXP SSL Engine
+ * @Param useCertsFromSE - If set, retrieve client certificate and key from Secure Element
  *
  * @return int return code
  */
 int initialize(iotfclient  *client, char *orgId, char* domainName, char *deviceType,
     char *deviceId, char *authmethod, char *authToken, char *serverCertPath, int useCerts,
-    char *rootCACertPath, char *clientCertPath,char *clientKeyPath, int isGatewayClient, int useNXPEngine)
+    char *rootCACertPath, char *clientCertPath,char *clientKeyPath, int isGatewayClient, 
+    int useNXPEngine, int useCertsFromSE)
 {
     LOG(TRACE, "entry::");
 
-    Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0};
+    Config configstr = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1883, 0, 0, 0};
     int rc = 0;
 
-    LOG(DEBUG, "org=%s, domain=%s, type=%s, id=%s, token= s, useCerts=%d, serverCertPath=%s",
-               orgId,domainName,deviceType,deviceId,authToken,useCerts,serverCertPath);
+    LOG(DEBUG, "org=%s, domain=%s, type=%s, id=%s, token= s, useCerts=%d, serverCertPath=%s useNXPEngine=%d useCertsFromSE=%d",
+               orgId,domainName,deviceType,deviceId,authToken,useCerts,serverCertPath,useNXPEngine,useCertsFromSE);
 
     if (orgId == NULL || deviceType == NULL || deviceId == NULL) {
         rc = MISSING_INPUT_PARAM;
@@ -183,6 +186,9 @@ int initialize(iotfclient  *client, char *orgId, char* domainName, char *deviceT
         strCopy(&configstr.domain, domainName);
     strCopy(&configstr.type, deviceType);
     strCopy(&configstr.id, deviceId);
+
+    configstr.useNXPEngine = useNXPEngine;
+    configstr.useCertsFromSE = useCertsFromSE;
 
     if ((strcmp(orgId,"quickstart") != 0)) {
         if (authmethod == NULL || authToken == NULL) {
@@ -376,6 +382,10 @@ static int get_config(char * filename, Config * configstr)
         } else if (strcmp(prop,"useNXPEngine") == 0){
             configstr->useNXPEngine = value[0] - '0';
             LOG(INFO, "Config: useNXPEngine=%d ",configstr->useNXPEngine);
+
+        } else if (strcmp(prop,"useCertsFromSE") == 0){
+            configstr->useCertsFromSE = value[0] - '0';
+            LOG(INFO, "Config: useCertsFromSE=%d ",configstr->useCertsFromSE);
         }
     }
 
@@ -390,7 +400,7 @@ exit:
 void connlost(void *context, char *cause)
 {
     LOG(TRACE, "entry::");
-    LOG(WARN, "IoTF client connection is lost. Cause=%s", cause);
+    LOG(WARN, "IoTF client connection is lost. Context=%x Cause=%s", context, cause);
     LOG(TRACE, "exit::");
 }
 
@@ -453,6 +463,47 @@ int connectiotf(iotfclient  *client)
         } else {
             setenv ("OPENSSL_CONF", "/etc/ssl/opensslA71CH_i2c.cnf", 1);
             LOG(INFO, "Library is set to use NXP Openssl Engine.");
+        }
+
+        /* Retrieve certificates from SE if useCertsFromSE is set */
+        if ( client->cfg.useCertsFromSE ) {
+            /* Get certificate directory from client certificate path is specified
+             * else use default certificate directory is /opt/iotnxpimxclient/certs
+             */
+            char *certDir = NULL;
+            char *seUID = NULL;
+            if ( client->cfg.clientCertPath != NULL ) {
+                certDir = dirname(client->cfg.clientCertPath);
+            }
+            if ( certDir == NULL ) certDir = "/opt/iotnxpimxclient/certs";
+            seUID = a71ch_retrieveCertificatesFromSE(certDir);
+            if ( seUID == NULL ) {
+                LOG(ERROR, "Failed to retrieve client certificate and key from Secure Element");
+                rc = SE_CERT_ERROR;
+                goto exit;
+            }
+
+            LOG(INFO, "Retrieved client certificate and key for UID: %s", seUID);
+
+            /* Use retrieved certificates */
+            if (useCerts) {
+                char filePath[2048];
+                /* set client cert */
+                if (isGateway) {
+                    sprintf(filePath, "%s/%s_gateway_ec_pem.crt", certDir, seUID);
+                } else {
+                   sprintf(filePath, "%s/%s_device_ec_pem.crt", certDir, seUID);
+                }
+                if ( client->cfg.clientCertPath != NULL ) free(client->cfg.clientCertPath);
+                client->cfg.clientCertPath = (char *)strdup(filePath);
+                /* set client reference key */
+                sprintf(filePath, "%s/%s.ref_key", certDir, seUID);
+                if (client->cfg.clientKeyPath != NULL) free(client->cfg.clientKeyPath);
+                client->cfg.clientKeyPath = (char *)strdup(filePath);
+                LOG(INFO, "Client certificate  from SE: clientCertPath=%s", client->cfg.clientCertPath);
+                LOG(INFO, "Client refernce key from SE: clientKeyPath=%s", client->cfg.clientKeyPath);
+            }
+            free(seUID);
         }
     }
 
@@ -546,7 +597,7 @@ int publishData(iotfclient *client, char *topic, char *payload, int qos)
 * @param time_ms - Time in milliseconds
 * @return int return code
 */
-int yield(iotfclient  *client, int time_ms)
+int yield(int time_ms)
 {
     LOG(TRACE, "entry::");
 
@@ -584,9 +635,9 @@ void setCommandHandler(iotfclient  *client, commandCallback handler)
     cb = handler;
 
     if (cb != NULL){
-        LOG(DEBUG, "Registered callabck to process the arrived message");
+        LOG(DEBUG, "Client ID %s : Registered callabck to process the arrived message", client->cfg.id);
     } else {
-        LOG(DEBUG, "Callabck not registered to process the arrived message");
+        LOG(DEBUG, "Client ID %s : Callabck not registered to process the arrived message", client->cfg.id);
     }
 
     LOG(TRACE, "exit::");
@@ -596,7 +647,7 @@ void setCommandHandler(iotfclient  *client, commandCallback handler)
 static void messageDelivered(void *context, MQTTClient_deliveryToken dt)
 {
     LOG(TRACE, "entry::");
-    LOG(DEBUG, "Message delivery confirmed. token=%d", dt);
+    LOG(DEBUG, "Message delivery confirmed. context=%x token=%d", context, dt);
     LOG(TRACE, "exit::");
 }
 
@@ -610,7 +661,7 @@ static int messageArrived(void *context, char *topicName, int topicLen, MQTTClie
         sprintf(topic,"%s",topicName);
         void *payload = message->payload;
 
-        LOG(TRACE, "Topic:%s  Payload:%s", topic, (char *)payload);
+        LOG(TRACE, "Context:%x Topic:%s TopicLen=%d Payload:%s", context, topic, topicLen, (char *)payload);
 
         size_t payloadlen = message->payloadlen;
 

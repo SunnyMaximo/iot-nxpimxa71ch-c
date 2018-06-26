@@ -62,7 +62,7 @@ void logInvoke(const LOGLEVEL level, const char * func, const char * file, int l
     va_list args;
     char buf[MAX_LOG_BUFSIZE];
 
-    if (logger != NULL && level <= logLevel ) 
+    if (logger != NULL && (int)level <= logLevel ) 
     {
         va_start(args, fmts);
         vsnprintf(buf, MAX_LOG_BUFSIZE, fmts, args);

@@ -24,27 +24,44 @@ SHELL = /bin/sh
 
 CLIENTDIR := /opt/iotnxpimxclient/
 
-all: setup build install
+all: wiotp_install wiotp_samples
 
-build: setup
-	@echo "Build Watson IoT Platform client based on Paho MQTT c client, for NXP i.MX Distro."
-	make -C paho.mqtt.c-1.2.0 CLIENTDIR=$(CLIENTDIR)
+build: wiotp_lib 
 
-clean: uninstall
-	-rm -rf paho.mqtt.c-1.2.0 download .setup_done
 setup:
-	@echo "Watson IoT Platform client based on Paho MQTT c client, for NXP i.MX Distro.: Build setup"
+	@echo "Setup for Watson IoT Platform client build, based on Paho MQTT c client, for NXP i.MX Distro."
 	@chmod 755 ./setup.sh; ./setup.sh
 
-install: build
-	@echo "Install packages"
-	@mkdir -p /usr/local/bin
-	@mkdir -p /usr/local/lib
-	@mkdir -p /usr/local/include
-	@if [ -d "paho.mqtt.c-1.2.0" ]; then make -C paho.mqtt.c-1.2.0 install CLIENTDIR=$(CLIENTDIR); fi
-	@if [ -d "paho.mqtt.c-1.2.0" ]; then make -C paho.mqtt.c-1.2.0 enable-libs CLIENTDIR=$(CLIENTDIR); fi
+paho_mqtt_libs: setup
+	@echo "Build Paho MQTT c client library, for NXP i.MX Distro."
+	make -C paho.mqtt.c-1.2.0
+
+paho_mqtt_libs_install: paho_mqtt_libs
+	@echo "Install Paho MQTT c client library, for NXP i.MX Distro."
+	make -i -C paho.mqtt.c-1.2.0 install
+
+wiotp_lib: paho_mqtt_libs_install
+	@echo "Build Watson IoT Platform client library based on Paho MQTT c client, for NXP i.MX Distro."
+	make -C src
+
+wiotp_lib_install: wiotp_lib
+	@echo "Install Watson IoT Platform client library, for NXP i.MX Distro."
+	make -i -C src install
+
+wiotp_samples: wiotp_lib_install
+	@echo "Build Watson IoT Platform client samples, for NXP i.MX Distro."
+	make -C samples CLIENTDIR=$(CLIENTDIR)
+
+install: wiotp_samples
+	@echo "Install Watson IoT Platform client library and samples"
 
 uninstall:
-	@echo "Uninstall packages"
-	@if [ -d "paho.mqtt.c-1.2.0" ]; then make -i -C paho.mqtt.c-1.2.0 uninstall CLIENTDIR=$(CLIENTDIR); fi
+	@echo "Uninstall Watson IoT Platform client library and samples"
+	make -i -C samples uninstall
+	make -i -C src uninstall
+	make -i -C paho.mqtt.c-1.2.0 uninstall
+
+clean: uninstall
+	-rm -rf paho.mqtt.c-1.2.0 download build .setup_done
+
 
