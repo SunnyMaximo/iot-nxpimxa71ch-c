@@ -66,7 +66,8 @@ fi
 # Create lib and include directory - needed for installing library and headers
 if [ ! -d /usr/local/lib ]
 then
-    echo "Create /usr/local/lib and /usr/local/include directory"
+    echo "Create /usr/local/bin, /usr/local/lib and /usr/local/include directories"
+    mkdir -p /usr/local/bin
     mkdir -p /usr/local/lib
     mkdir -p /usr/local/include
 fi
