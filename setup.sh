@@ -63,5 +63,14 @@ then
     tar xzf download/paho.mqtt.c-1.2.0.tar.gz
 fi
 
+# Create lib and include directory - needed for installing library and headers
+if [ ! -d /usr/local/lib ]
+then
+    echo "Create /usr/local/lib and /usr/local/include directory"
+    mkdir -p /usr/local/lib
+    mkdir -p /usr/local/include
+fi
+
+
 touch .setup_done
 
