@@ -45,7 +45,7 @@ CINCS = -I/usr/local/include
 CFLAGS = $(CINCS) -fPIC -Wall -Wextra -O2 -g
 LDFLAGS = -lwiotpnxpimxa71ch
 
-SAMPLE_FILES = helloWorld deviceSample gatewaySample
+SAMPLE_FILES = helloWorld deviceSample gatewaySample managedDeviceSample
 SAMPLES = ${addprefix ${blddir}/,${SAMPLE_FILES}}
 
 .PHONY: all clean ${SAMPLES}
@@ -64,6 +64,7 @@ install: build
 	$(INSTALL_PROGRAM) ${blddir}/helloWorld $(CLIENTDIR)bin/.
 	$(INSTALL_PROGRAM) ${blddir}/deviceSample $(CLIENTDIR)bin/.
 	$(INSTALL_PROGRAM) ${blddir}/gatewaySample $(CLIENTDIR)bin/.
+	$(INSTALL_PROGRAM) ${blddir}/managedDeviceSample $(CLIENTDIR)bin/.
 	$(INSTALL_DATA) ${blddir}/*.pem $(CLIENTDIR)certs/.
 	$(INSTALL_DATA) ${blddir}/*.cfg $(CLIENTDIR)config/.
 
@@ -71,9 +72,11 @@ uninstall:
 	-${RM} $(CLIENTDIR)bin/helloWorld
 	-${RM} $(CLIENTDIR)bin/deviceSample
 	-${RM} $(CLIENTDIR)bin/gatewaySample
+	-${RM} $(CLIENTDIR)bin/managedDeviceSample
 
 clean:
 	-${RM} ${SAMPLE_FILES}
 
 print-%  : ; @echo $* = $($*)
+
 
