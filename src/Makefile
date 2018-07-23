@@ -39,13 +39,19 @@ CINCS = -I$(AXHOSTSW_DIR)/linux/A71CH/inc \
         -I$(SRCDIR)
 
 CFLAGS = $(CINCS) -fPIC -Wall -Wextra -O2 -g -DLINUX -DTGT_A71CH -DOPENSSL -DI2C
-LDFLAGS = -shared -le2a71chi2c -lA71CH_i2c_imx -lssl -lcrypto -lpaho-mqtt3cs
+LDFLAGS = -shared -lssl -lcrypto -lpaho-mqtt3cs -le2a71chi2c -lA71CH_i2c_imx
 
 WIOTPLIB = libwiotpnxpimxa71ch.so
 TARGET_LIB = $(OBJDIR)/${WIOTPLIB}.${VERSION}
 
-SOURCES  := $(wildcard $(SRCDIR)/*.c)
-OBJECTS  := $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+# SOURCES  := $(wildcard $(SRCDIR)/*.c)
+# OBJECTS  := $(SOURCES:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
+
+SOURCES := config.c a71chRetrieveCertificates.c gatewayclient.c iotfclient.c deviceclient.c iotf_utils.c cJSON.c manageddevice.c
+OBJECTS := $(SOURCES:%.c=$(OBJDIR)/%.o)
+
+SOURCES_ASYNC := a71chRetrieveCertificates.c gatewayclient.c iotfclient_async.c deviceclient.c iotf_utils.c
+OBJECTS_ASYNC := $(SOURCES_ASYNC:%.c=$(OBJDIR)/%.o)
 
 .PHONY: all clean $(OBJECTS) $(TARGET_LIB)
 

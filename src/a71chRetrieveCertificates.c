@@ -321,7 +321,7 @@ char * a71ch_retrieveCertificatesFromSE(char *certDir)
     /* Get reference key */
     int keyIndex = 0;
     int storageClass = A71CH_SSI_KEY_PAIR;
-    sprintf(filePath, "%s.ref_key", deviceId);
+    sprintf(filePath, "%s/%s.ref_key", certDir, deviceId);
     retCode = getReferenceKey(keyIndex, storageClass, filePath);
     if (retCode != SUCCESS) {
         printf("Failed to retrieve reference key.\n");

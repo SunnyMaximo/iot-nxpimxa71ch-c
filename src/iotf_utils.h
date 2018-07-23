@@ -51,5 +51,6 @@ char *trim(char *str);
 void strCopy(char **dest, char *src);
 int reconnect_delay(int i);
 void freePtr(char* p);
+void generateUUID(char* uuid_str);
 
  #endif

@@ -24,7 +24,7 @@ SHELL = /bin/sh
 
 CLIENTDIR := /opt/iotnxpimxclient/
 
-all: wiotp_install wiotp_samples
+all: wiotp_lib_install wiotp_samples
 
 build: wiotp_lib 
 

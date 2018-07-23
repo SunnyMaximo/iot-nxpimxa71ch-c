@@ -52,7 +52,7 @@ int publishEvent(iotfclient  *client, char *eventType, char *eventFormat, char* 
 
     rc = publishData(client,publishTopic,data,qos);
 
-    if (rc != MQTTCLIENT_SUCCESS) {
+    if (rc != 0) {
  	LOG(WARN, "Connection lost, retry the connection \n");
         retry_connection(client);
         rc = publishData(client,publishTopic,data,qos);
@@ -80,8 +80,10 @@ int subscribeCommand(iotfclient  *client, char *commandName, char *format, int q
         return rc;
     }
 
-    LOG(DEBUG,"Calling MQTTClient_subscribe for subscribing to device command: name=%s format=%s qos=%d", commandName, format, qos);
-    rc = MQTTClient_subscribe(client->c, "iot-2/cmd/%s/fmt/%s", QoS0);
+    LOG(DEBUG,"Subscribing to device command: name=%s format=%s qos=%d", commandName, format, qos);
+    char subTopic[strlen(commandName) + strlen(format) + 16];
+    sprintf(subTopic, "iot-2/cmd/%s/fmt/%s", commandName, format);
+    rc = subscribeTopic(client, subTopic, QoS0);
 
     LOG(TRACE, "exit:: rc=%d", rc);
     return rc;
@@ -97,8 +99,8 @@ int subscribeCommands(iotfclient  *client)
     LOG(TRACE, "entry::");
 
     int rc = -1;
-    LOG(DEBUG,"Calling MQTTClient_subscribe for subscribing to all device commands");
-    rc = MQTTClient_subscribe(client->c, "iot-2/cmd/+/fmt/+", QoS0);
+    LOG(DEBUG,"Subscribing to all device commands");
+    rc = subscribeTopic(client, "iot-2/cmd/+/fmt/+", QoS0);
 
     LOG(TRACE, "exit:: rc=%d", rc);
     return rc;

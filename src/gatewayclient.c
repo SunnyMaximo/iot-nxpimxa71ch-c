@@ -29,6 +29,7 @@
  *
  *******************************************************************************/
 
+
 #include "iotfclient.h"
 #include "iotf_utils.h"
 
@@ -62,7 +63,7 @@ int publishDeviceEvent(iotfclient  *client, char *deviceType, char *deviceId, ch
 
     rc = publishData(client, publishTopic, data, qos);
 
-    if (rc != MQTTCLIENT_SUCCESS) {
+    if (rc != 0) {
         LOG(WARN, "connection lost.. %d \n",rc);
         retry_connection(client);
         rc = publishData(client, publishTopic, data, qos);
@@ -97,7 +98,7 @@ int publishGatewayEvent(iotfclient  *client, char *eventType, char *eventFormat,
 
     rc = publishData(client, publishTopic , data, qos);
 
-    if (rc != MQTTCLIENT_SUCCESS) {
+    if (rc != 0) {
         LOG(WARN, "connection lost.. \n");
         retry_connection(client);
         rc = publishData(client, publishTopic , data, qos);
@@ -118,17 +119,17 @@ int subscribeToGatewayCommands(iotfclient  *client)
     LOG(TRACE, "entry::");
 
     int rc = -1;
-    char* subscribeTopic = NULL;
+    char* subTopic = NULL;
 
-    subscribeTopic = (char*) malloc(strlen(client->cfg.id) + strlen(client->cfg.type) + 28);
+    subTopic = (char*) malloc(strlen(client->cfg.id) + strlen(client->cfg.type) + 28);
 
-    sprintf(subscribeTopic, "iot-2/type/%s/id/%s/cmd/+/fmt/+", client->cfg.type, client->cfg.id);
+    sprintf(subTopic, "iot-2/type/%s/id/%s/cmd/+/fmt/+", client->cfg.type, client->cfg.id);
 
-    LOG(DEBUG, "Calling MQTTClient_subscribe for subscribing to gateway commands");
+    LOG(DEBUG, "Subscribing to all gateway commands");
 
-    rc = MQTTClient_subscribe(client->c, subscribeTopic, QoS2);
+    rc = subscribeTopic(client, subTopic, QoS2);
 
-    subscribeTopics[subscribeCount++] = subscribeTopic;
+    subscribeTopics[subscribeCount++] = subTopic;
 
     LOG(TRACE,"exit:: rc=%d", rc);
 
@@ -145,15 +146,15 @@ int subscribeToDeviceCommands(iotfclient  *client, char* deviceType, char* devic
     LOG(TRACE, "entry::");
 
     int rc = -1;
-    char * subscribeTopic = NULL;
+    char * subTopic = NULL;
 
-    subscribeTopic = (char*)malloc(strlen(deviceType) + strlen(deviceId) + strlen(command) + strlen(format) + 26);
-    sprintf(subscribeTopic, "iot-2/type/%s/id/%s/cmd/%s/fmt/%s", deviceType, deviceId, command, format);
+    subTopic = (char*)malloc(strlen(deviceType) + strlen(deviceId) + strlen(command) + strlen(format) + 26);
+    sprintf(subTopic, "iot-2/type/%s/id/%s/cmd/%s/fmt/%s", deviceType, deviceId, command, format);
 
-    LOG(DEBUG, "Calling MQTTSubscribe for subscribing to device commands: %s", subscribeTopic);
+    LOG(DEBUG, "Subscribing to device commands: %s", subTopic);
 
-    rc = MQTTClient_subscribe(client->c, subscribeTopic, qos);
-    subscribeTopics[subscribeCount++] = subscribeTopic;
+    rc = subscribeTopic(client, subTopic, qos);
+    subscribeTopics[subscribeCount++] = subTopic;
 
     LOG(TRACE,"exit:: rc=%d", rc);
     return rc;
@@ -189,15 +190,15 @@ int subscribeToGatewayNotification(iotfclient  *client)
     LOG(TRACE, "entry::");
 
     int rc = -1;
-    char * subscribeTopic = NULL;
+    char * subTopic = NULL;
 
-    subscribeTopic = (char*) malloc(strlen(client->cfg.id) + strlen(client->cfg.type) + 23);
-    sprintf(subscribeTopic, "iot-2/type/%s/id/%s/notify", client->cfg.type, client->cfg.id);
+    subTopic = (char*) malloc(strlen(client->cfg.id) + strlen(client->cfg.type) + 23);
+    sprintf(subTopic, "iot-2/type/%s/id/%s/notify", client->cfg.type, client->cfg.id);
 
-    LOG(DEBUG, "Calling MQTTClient_subscribe for subscribing to gateway notification");
+    LOG(DEBUG, "Subscribing to gateway notification");
 
-    rc = MQTTClient_subscribe(client->c, subscribeTopic, QoS2);
-    subscribeTopics[subscribeCount++] = subscribeTopic;
+    rc = subscribeTopic(client, subTopic, QoS2);
+    subscribeTopics[subscribeCount++] = subTopic;
 
     LOG(TRACE,"exit:: rc=%d", rc);
     return rc;

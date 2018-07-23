@@ -30,10 +30,16 @@
  *
  *******************************************************************************/
 
-#ifndef IOTCLIENT_H_
+#if defined(__cplusplus)
+ extern "C" {
+#endif
+#if !defined(IOTCLIENT_H_)
 #define IOTCLIENT_H_
 
-#include <MQTTClient.h>
+#define DLLImport extern
+#define DLLExport __attribute__ ((visibility ("default")))
+
+#include <stdio.h>
 
 #define BUFFER_SIZE      1024
 #define MAX_SUBSCRIPTION 5
@@ -59,20 +65,20 @@ extern char *sourceFile;
 /* configuration file structure */
 struct iotf_config
 {
-       char* org;
-       char* domain;
-       char* type;
-       char* id;
-       char* authmethod;
-       char* authtoken;
-       char* serverCertPath;
-       char* rootCACertPath;
-       char* clientCertPath;
-       char* clientKeyPath;
-       int port;
-       int useClientCertificates;
-       int useNXPEngine;
-       int useCertsFromSE;
+    char* org;
+    char* domain;
+    char* type;
+    char* id;
+    char* authmethod;
+    char* authtoken;
+    char* serverCertPath;
+    char* rootCACertPath;
+    char* clientCertPath;
+    char* clientKeyPath;
+    int port;
+    int useClientCertificates;
+    int useNXPEngine;
+    int useCertsFromSE;
 };
 
 typedef struct iotf_config Config;
@@ -81,17 +87,23 @@ typedef struct iotf_config Config;
 /* iotfclient */
 typedef struct
 {
-       MQTTClient *c;
-       Config cfg;
-       unsigned char buf[BUFFER_SIZE];
-       unsigned char readbuf[BUFFER_SIZE];
-       int isQuickstart;
-       int isGateway;
+    void *c;
+    Config cfg;
+    unsigned char buf[BUFFER_SIZE];
+    unsigned char readbuf[BUFFER_SIZE];
+    int isQuickstart;
+    int isGateway;
+    int managed;
 } iotfclient;
 
 /* Callback used to process commands */
 typedef void (*commandCallback)(char* type, char* id, char* commandName, char *format, void* payload, size_t payloadlen);
 
+/* Callback used to process device management commands */
+typedef void (*dmCommandCallback)(char* status, char* requestId, void* payload, size_t payloadlen);
+
+/* Action callback */
+typedef void (*dmActionCallback)();
 
 /**
 * Function used to initialize the Watson IoT client
@@ -142,15 +154,15 @@ DLLExport int connectiotf(iotfclient *client);
  * Function used to set the Command Callback function. This must be set if you to recieve commands.
  * @param client - Reference to the Iotfclient
  *
- * @param cb - A Function pointer to the commandCallback. Its signature - void (*commandCallback)(char* commandName, char* pay
+ * @param cb - A Function pointer to the commandCallback. 
+ *             
  * @return int return code
  */
 DLLExport void setCommandHandler(iotfclient *client, commandCallback cb);
 
-
 /**
 * Function used to publish the given data to the topic with the given QoS
-* @Param client - Address of MQTT Client
+* @Param client - Address of Iotf Client
 * @Param topic - Topic to publish
 * @Param payload - Message payload
 * @Param qos - quality of service either of 0,1,2
@@ -158,6 +170,16 @@ DLLExport void setCommandHandler(iotfclient *client, commandCallback cb);
 * @return int - Return code from MQTT Publish Call
 **/
 DLLExport int publishData(iotfclient *client, char *topic, char *payload, int qos);
+
+/**
+* Function used to subscribe to a topic with the given QoS
+* @Param client - Address of Iotf Client
+* @Param topic - Topic to subscribe
+* @Param qos - quality of service either of 0,1,2
+*
+* @return int - Return code from MQTT Subscribe Call
+**/
+DLLExport int subscribeTopic(iotfclient *client, char *topic, int qos);
 
 /**
 * Function used to check if the client is connected
@@ -261,6 +283,111 @@ DLLExport int subscribeToGatewayCommands(iotfclient  *client);
 * @return int return code
 */
 DLLExport int subscribeToDeviceCommands(iotfclient  *client, char* deviceType, char* deviceId, char* command, char* format, int qos) ;
+
+
+/**
+* <p>Send a device manage request to Watson IoT Platform</p>
+*
+* <p>A Device uses this request to become a managed device.
+* It should be the first device management request sent by the
+* Device after connecting to the IBM Watson IoT Platform.
+* It would be usual for a device management agent to send this
+* whenever is starts or restarts.</p>
+*
+* @param lifetime The length of time in seconds within
+*        which the device must send another Manage device request.
+*        if set to 0, the managed device will not become dormant.
+*        When set, the minimum supported setting is 3600 (1 hour).
+*
+* @param supportFirmwareActions Tells whether the device supports firmware actions or not.
+*        The device must add a firmware handler to handle the firmware requests.
+*
+* @param supportDeviceActions Tells whether the device supports Device actions or not.
+*        The device must add a Device action handler to handle the reboot and factory reset requests.
+*
+* @param reqId Function returns the reqId if the publish Manage request is successful.
+*
+* @return
+*/
+DLLExport void manage(iotfclient *client, long lifetime, int supportDeviceActions, int supportFirmwareActions, char* reqId);
+
+
+/**
+ * Moves the device from managed state to unmanaged state
+ *
+ * A device uses this request when it no longer needs to be managed.
+ * This means Watson IoT Platform will no longer send new device management requests
+ * to this device and device management requests from this device will
+ * be rejected apart from a Manage device request
+ *
+ * @param reqId Function returns the reqId if the Unmanage request is successful.
+ */
+DLLExport void unmanage(iotfclient *client, char* reqId);
+
+
+/**
+ * Register Callback function to managed device request response
+ *
+ * @param cb - A Function pointer to the dmCommandCallback.
+ *
+ */
+DLLExport void setDMCommandHandler(iotfclient  *client, dmCommandCallback cb);
+
+/**
+ * Register Callback function to Factory reset request
+ *
+ * @param client reference to the ManagedDevice
+ *
+ * @param cb - A Function pointer to the dmCommandCallback.
+ *
+ */
+DLLExport void setFactoryResetHandler(dmCommandCallback cb);
+
+/**
+ * Register Callback function to Reboot request
+ *
+ * @param cb - A Function pointer to the dmCommandCallback.
+ *
+ */
+DLLExport void setRebootHandler(dmCommandCallback cb);
+
+/**
+ * Register Callback function to Firmware Download request
+ *
+ * @param cb - A Function pointer to the dmActionCallback.
+ *
+ */
+DLLExport void setFirmwareDownloadHandler(dmActionCallback cb);
+
+/**
+ * Register Callback function to Firmware Update request
+ *
+ * @param cb - A Function pointer to the dmActionCallback.
+ *
+ */
+DLLExport void setFirmwareUpdateHandler(dmActionCallback cb);
+
+/**
+ * Update the firmware state while downloading firmware and
+ * Notifies the IBM Watson IoT Platform with the updated state
+ *
+ * @param state Download state update received from the device
+ *
+ * @return int return code
+ *
+ */
+DLLExport int changeFirmwareDownloadState(int state);
+
+/**
+ * Update the firmware state while updating firmware and
+ * Notifies the IBM Watson IoT Platform with the updated state
+ *
+ * @param state update state update received from the device
+ *
+ * @return int return code
+ *
+ */
+DLLExport int changeFirmwareUpdateState(int state);
 
 
 /**

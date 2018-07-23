@@ -101,15 +101,42 @@ void getopts(int argc, char** argv)
  */
 void  deviceCommandCallback (char* type, char* id, char* commandName, char *format, void* payload, size_t payloadSize)
 {
-    fprintf(stdout, "Received device command:n");
-    fprintf(stdout, "Type=%s ID=%s CommandName=%s Format=%s Len=%d\n", type, id, commandName, format, (int)payloadSize);
-    fprintf(stdout, "Payload: %s\n", (char *)payload);
+    if ( type == NULL && id == NULL ) {
+        fprintf(stdout, "Received device management status:");
+
+    } else {
+        fprintf(stdout, "Received device command:\n");
+        fprintf(stdout, "Type=%s ID=%s CommandName=%s Format=%s Len=%d\n", type, id, commandName, format, (int)payloadSize);
+        fprintf(stdout, "Payload: %s\n", (char *)payload);
+    }
 
     /*
      * DEV_NOTES:
      * Device developers - add your custom code to process device commands
      */
 }
+
+
+/* 
+ * DEV_NOTES:
+ * Device Management command callback function
+ * Device developers can customize this function based on their use case
+ * to handle device management commands sent by WIoTP.
+ * Set this callback function using API setCommandHandler().
+ */
+void  deviceManagementCommandCallback (char *reqId, char *action, void *payload, size_t payloadSize)
+{
+    fprintf(stdout, "Received device command:\n");
+    fprintf(stdout, "RequestID=%s Action=%s Len=%d\n", reqId, action, (int)payloadSize);
+    fprintf(stdout, "Payload: %s\n", (char *)payload);
+
+    /*
+     * DEV_NOTES:
+     * Device developers - add your custom code to process device management command
+     */
+}
+
+
 
 
 /* Main program */
@@ -175,6 +202,17 @@ int main(int argc, char *argv[])
      */
     setCommandHandler(&client, deviceCommandCallback);
 
+    char reqId[40];
+    manage(&client, 0, 1, 1, reqId);
+
+    /*
+     * DEV_NOTES:
+     * Set device management command callback using API setCommandHandler().
+     * Refer to deviceCommandCallback() function DEV_NOTES for details on
+     * how to process device commands received from WIoTP.
+     */
+    setRebootHandler(deviceManagementCommandCallback);
+
     /*
      * DEV_NOTES:
      * Invoke device command subscription API subscribeDeviceCommands().
@@ -206,6 +244,7 @@ int main(int argc, char *argv[])
 
     fprintf(stdout, "Received a signal - exiting publish event cycle.\n");
 
+    unmanage(&client, reqId);
 
     /*
      * DEV_NOTES:

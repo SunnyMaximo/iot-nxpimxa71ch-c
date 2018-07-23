@@ -61,6 +61,9 @@ if [ ! -d paho.mqtt.c-1.2.0 ]
 then
     echo "Unpacking paho mqtt c v1.2.0 source ..."
     tar xzf download/paho.mqtt.c-1.2.0.tar.gz
+    cd paho.mqtt.c-1.2.0
+    # Add OPENSSL_LOAD_CONF build directive - needed to use NXP openssl engine
+    sed -i 's/-DOPENSSL /-DOPENSSL -DOPENSSL_LOAD_CONF /g' Makefile
 fi
 
 # Create lib and include directory - needed for installing library and headers

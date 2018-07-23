@@ -69,6 +69,7 @@ void logInvoke(const LOGLEVEL level, const char * func, const char * file, int l
         va_end(args);
 
         fprintf(logger, "%s %s %s %d: %s: %s\n", __TIMESTAMP__, func, basename((char *)file), line, logLevelStr(level), buf);
+        fflush(logger);
     }
 }
 
@@ -151,7 +152,7 @@ void getTestCfgFilePath(char** path, char* fileName)
  */
 char *trim(char *str) 
 {
-    LOG(DEBUG,"entry::");
+    LOG(TRACE,"entry::");
     size_t len = 0;
     char *frontp = str - 1;
     char *endp = NULL;
@@ -184,8 +185,7 @@ char *trim(char *str)
         *endp = '\0';
     }
 
-    LOG(DEBUG, "String After trimming = %s",str);
-    LOG(DEBUG,"exit::");
+    LOG(TRACE, "exit:: String After trimming = %s",str);
 
     return str;
 }
@@ -236,4 +236,37 @@ int reconnect_delay(int i)
 
     return 600;	// after 20 attempts, retry every 10 minutes
 }
+
+
+/* generate UUID */
+void generateUUID(char* uuid_str)
+{
+    LOG(DEBUG, "entry::");
+
+    char GUID[40];
+    int t = 0;
+    char *szTemp = "xxxxxxxx-xxxxy-4xxxx-yxxxy-xxxxxxxxxxxx";
+    char *szHex = "0123456789ABCDEF-";
+    int nLen = strlen (szTemp);
+
+    for (t=0; t<nLen+1; t++)
+    {
+        int r =( rand ())% 16;
+        char c = ' ';
+
+        switch (szTemp[t])
+        {
+            case 'x' : { c = szHex [r]; } break;
+            case 'y' : { c = szHex [((r & 0x03) | 0x08)]; } break;
+            case '-' : { c = '-'; } break;
+            case '4' : { c = '4'; } break;
+        }
+
+        GUID[t] = ( t < nLen ) ? c : 0x00;
+    }
+    strcpy(uuid_str , GUID);
+
+    LOG(DEBUG, "entry:: uuid_str = %s",uuid_str);
+}
+
 
