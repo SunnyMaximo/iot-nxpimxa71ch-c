@@ -222,53 +222,10 @@ void messageFirmwareUpdate()
 }
 
 //Handler for Observe request
-void messageObserve(void *payload)
+void messageObserve(void)
 {
     LOG(DEBUG, "entry::");
-
     LOG(DEBUG,"Observe reqId: %s", currentRequestID);
-
-/*
-    int i = 0;
-    char* respMsg;
-    cJSON *resPayload, *resd, *resFields;
-    resPayload = cJSON_CreateObject();
-    cJSON_AddItemToObject(resPayload, "rc", cJSON_CreateNumber(RESPONSE_SUCCESS));
-    cJSON * jsonPayload = cJSON_Parse(payload);
-    cJSON* jreqId = cJSON_GetObjectItem(jsonPayload, "reqId");
-    strcpy(currentRequestID, jreqId->valuestring);
-
-    LOG(DEBUG,"Observe reqId: %s", currentRequestID);
-
-    cJSON_AddItemToObject(resPayload, "reqId", cJSON_CreateString(currentRequestID));
-    cJSON_AddItemToObject(resPayload, "d", resd = cJSON_CreateObject());
-    cJSON_AddItemToObject(resd, "fields", resFields = cJSON_CreateArray());
-
-    cJSON *d = cJSON_GetObjectItem(jsonPayload, "d");
-    cJSON *fields = cJSON_GetObjectItem(d, "fields");
-
-    for (i = 0; i < cJSON_GetArraySize(fields); i++) {
-        cJSON * field = cJSON_GetArrayItem(fields, i);
-        cJSON* fieldName = cJSON_GetObjectItem(field, "field");
-
-        LOG(DEBUG,"Observe called for fieldName:%s", fieldName->valuestring);
-
-        if (!strcmp(fieldName->valuestring, "mgmt.firmware")) {
-            dmClient.bObserve = 1;
-            cJSON* resValue;
-            cJSON* resField = cJSON_CreateObject();
-            cJSON_AddItemToObject(resField, "field", cJSON_CreateString("mgmt.firmware"));
-            cJSON_AddItemToObject(resField, "value", resValue = cJSON_CreateObject());
-            cJSON_AddItemToObject(resValue, "state",cJSON_CreateNumber(dmClient.DeviceData.mgmt.firmware.state));
-            cJSON_AddItemToObject(resValue, "updateStatus",cJSON_CreateNumber(dmClient.DeviceData.mgmt.firmware.updateStatus));
-            cJSON_AddItemToArray(resFields,resField);
-
-        }
-    }
-    respMsg = cJSON_Print(resPayload);
-    cJSON_Delete(resPayload);
-
-*/
 
     int rc = 200;
     char respMsg[256];
@@ -279,9 +236,6 @@ void messageObserve(void *payload)
 
     //Publish the response to the IoTF
     publishData(dmClient.client, RESPONSE, respMsg, QoS1);
-
-    // cJSON_Delete(jsonPayload);
-    // free(respMsg);
 
     LOG(DEBUG, "exit::");
 }
@@ -548,7 +502,7 @@ int messageArrived_dm(void *context, char *topic, void *payload, size_t len)
     } else if (!strcmp(topic, DMUPDATE)) {
         messageUpdate(payload);
     } else if (!strcmp(topic, DMOBSERVE)) {
-        messageObserve(payload);
+        messageObserve();
     } else if (!strcmp(topic, DMCANCEL)) {
         messageCancel(payload);
     } else if (!strcmp(topic, DMREBOOT)) {
