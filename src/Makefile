@@ -39,7 +39,7 @@ CINCS = -I$(AXHOSTSW_DIR)/linux/A71CH/inc \
         -I$(SRCDIR)
 
 CFLAGS = $(CINCS) -fPIC -Wall -Wextra -O2 -g -DLINUX -DTGT_A71CH -DOPENSSL -DI2C
-LDFLAGS = -shared -lssl -lcrypto -lpaho-mqtt3cs -le2a71chi2c
+LDFLAGS = -shared -lssl -lcrypto -lpaho-mqtt3cs -le2a71chi2c -lA71CH_i2c_imx
 
 WIOTPLIB = libwiotpnxpimxa71ch.so
 TARGET_LIB = $(OBJDIR)/${WIOTPLIB}.${VERSION}
@@ -71,8 +71,8 @@ install:
 	$(INSTALL_DATA) ${SRCDIR}/iotfclient.h ${includedir}
 	$(INSTALL_DATA) ${SRCDIR}/iotf_utils.h ${includedir}
 	$(INSTALL_DATA) ${TARGET_LIB} ${libdir}
-	$(LDCONFIG) ${libdir}
 	ln -s ${WIOTPLIB}.${VERSION} ${libdir}/${WIOTPLIB}
+	$(LDCONFIG) ${libdir}
 
 uninstall:
 	-${RM} ${includedir}/iotfclient.h

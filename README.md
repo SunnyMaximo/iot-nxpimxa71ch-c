@@ -187,4 +187,9 @@ cd /opt/iotnxpimxclient/bin
 ./gatewaySample --config /opt/iotnxpimxclient/config/gateway_a71ch.cfg
 ```
 
+## C Client Library Reference
+
+- [Supported Features](./doc/intro_c_api.md)
+- [C API for Devices](./doc/device_c_api.md)
+- [C API for Gateways](./doc/gateway_c_api.md)
 

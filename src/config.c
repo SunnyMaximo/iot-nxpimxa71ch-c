@@ -48,9 +48,7 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
         goto exit;
     }
 
-    LOG(DEBUG, "org:%s , domain:%s , type: %s , id:%s , token: %s , useCerts: %d , serverCertPath: %s",
-        configstr.org,configstr.domain,configstr.type,configstr.id,configstr.authtoken,configstr.useClientCertificates,
-        configstr.serverCertPath);
+    LOG(INFO, "org:%s , type: %s , useCerts: %d", configstr.org, configstr.type, configstr.useClientCertificates);
 
     /* check for quickstart domain */
     if ((strcasecmp(configstr.org,"quickstart") == 0)) {
@@ -61,7 +59,7 @@ int initialize_configfile(iotfclient  *client, char *configFilePath, int isGatew
     }
 
     /* Validate input - for missing configuration data */
-    if ((configstr.org == NULL || configstr.type == NULL || configstr.id == NULL) ||
+    if ((configstr.org == NULL || configstr.type == NULL ) ||
         (client->isQuickstart == 0 && configstr.useClientCertificates && configstr.useCertsFromSE == 0 &&
          (configstr.rootCACertPath == NULL || configstr.clientCertPath == NULL || configstr.clientKeyPath == NULL))) 
     {

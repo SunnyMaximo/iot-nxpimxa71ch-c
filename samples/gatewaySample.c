@@ -16,6 +16,10 @@
  *******************************************************************************/
 
 /*
+ * This sample shows how-to develop a gateway code using Watson IoT Platform
+ * iot-nxpa71ch-c client library, connect and interact with Watson IoT Platform
+ * Service.
+ *
  * This sample gateway client code demonstrates the following gateway features:
  *     - Connect a gateway
  *     - Send gateway event
@@ -23,14 +27,21 @@
  *     - Send event on dehalf of a device
  *     - Subscribe to a device command
  *
- * This sample reads configuration parameters from a configuration file.
- * The supported command line arguments are:
- *     -c or --config <config_file_path>  - Default is ../config/gateway.cfg
- *     -a or --action [gateway|device]    - Test action - default is gateway
- *     -t or --type <device_type>         - Default is TestDeviceType - used for device test
- *     -i or --id <device_id>             - Default is TestDevice - used for device test
+ * NOTE: Gateway developers, comments tagged with DEV_NOTES describes WIoTP client API details.
  *
- * NOTE: User will have to register specified device type and id with WIoTP.
+ * SYNTAX:
+ * gatewaySample --config <config_file_path>
+ *
+ * Following client configuration can be set in gateway configuration file:
+ *
+ * org=<your Watson IoT Platform service organization ID>
+ * type=NXP-A71CH-G                    # Pre-defined NXP A71CH Secure Element gateway type
+ * useClientCertificates=1
+ * rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
+ * useNXPEngine=1                      # Set to 1 for using NXP SSL engine
+ * useCertsFromSE=1                    # Set to 1 for using certificates stored in Secured Element
+ *
+ * NOTE: User will have to register specified gateway type and id with WIoTP.
  *
  */
 

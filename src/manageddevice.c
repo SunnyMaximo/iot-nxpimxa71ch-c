@@ -225,6 +225,7 @@ void messageFirmwareUpdate()
 void messageObserve(void)
 {
     LOG(DEBUG, "entry::");
+
     LOG(DEBUG,"Observe reqId: %s", currentRequestID);
 
     int rc = 200;

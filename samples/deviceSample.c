@@ -37,13 +37,12 @@
  *
  * org=<your Watson IoT Platform service organization ID>
  * type=NXP-A71CH-D                    # Pre-defined NXP A71CH Secure Element device type
- * id=<your device id issued by NXP>   # Secured element serial number 
  * useClientCertificates=1
- * clientCertPath=<your device client certificate path issued by NXP>
- * clientKeyPath=<your device client refernce key patch issued by NXP>
  * rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
- * useNXPEngine=1                      # Set to 1 for client to use certificates stored in SE 
+ * useNXPEngine=1                      # Set to 1 for using NXP SSL engine
+ * useCertsFromSE=1                    # Set to 1 for using certificates stored in Secured Element
  *
+ * NOTE: User will have to register specified gateway type and id with WIoTP.
  */
 
 #include <stdio.h>

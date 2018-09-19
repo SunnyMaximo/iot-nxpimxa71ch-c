@@ -39,6 +39,7 @@ extern int messageArrived_dm(void *context, char *topicName, int topicLen, void 
 commandCallback cb;
  
 unsigned short keepAliveInterval = 60;
+int a71chInited = 0;
 
 /**
  * Callback function to handle connection lose cases
@@ -61,6 +62,7 @@ int connectiotf(iotfclient  *client)
     LOG(TRACE, "entry::");
 
     int rc = 0;
+    char *seUID = NULL;
 
     MQTTClient mqttClient;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
@@ -77,27 +79,6 @@ int connectiotf(iotfclient  *client)
     sprintf(messagingUrl, ".messaging.%s",client->cfg.domain);
     char hostname[strlen(client->cfg.org) + strlen(messagingUrl) + 1];
     sprintf(hostname, "%s%s", client->cfg.org, messagingUrl);
-    int clientIdLen =  strlen(client->cfg.org) + strlen(client->cfg.type) + strlen(client->cfg.id) + 5;
-    char *clientId = malloc(clientIdLen);
-
-    if (isGateway)
-        sprintf(clientId, "g:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
-    else
-        sprintf(clientId, "d:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
-
-    LOG(INFO, "messagingUrl=%s", messagingUrl);
-    LOG(INFO, "hostname=%s", hostname);
-    LOG(INFO, "port=%d", port);
-    LOG(INFO, "clientId=%s", clientId);
-
-    /* create MQTT Client */
-    char connectionUrl[strlen(hostname) + 14];
-    if ( port == 1883 )
-       sprintf(connectionUrl, "tcp://%s:%d", hostname, port);
-    else
-       sprintf(connectionUrl, "ssl://%s:%d", hostname, port);
-
-    LOG(INFO, "connectionUrl=%s", connectionUrl);
 
     /* If useNXPEngine is enabled set environment variable to load NXP engine */
     if ( client->cfg.useNXPEngine ) {
@@ -112,12 +93,11 @@ int connectiotf(iotfclient  *client)
         }
 
         /* Retrieve certificates from SE if useCertsFromSE is set */
-        if ( client->cfg.useCertsFromSE ) {
+        if ( client->cfg.useCertsFromSE && a71chInited == 0 ) {
             /* Get certificate directory from client certificate path is specified
              * else use default certificate directory is /opt/iotnxpimxclient/certs
              */
             char *certDir = NULL;
-            char *seUID = NULL;
             if ( client->cfg.clientCertPath != NULL ) {
                 certDir = dirname(client->cfg.clientCertPath);
             }
@@ -126,7 +106,7 @@ int connectiotf(iotfclient  *client)
             if ( seUID == NULL ) {
                 LOG(ERROR, "Failed to retrieve client certificate and key from Secure Element");
                 rc = SE_CERT_ERROR;
-                goto exit;
+                return rc;
             }
 
             LOG(INFO, "Retrieved client certificate and key for UID: %s", seUID);
@@ -153,14 +133,58 @@ int connectiotf(iotfclient  *client)
                 LOG(INFO, "Client certificate  from SE: clientCertPath=%s", client->cfg.clientCertPath);
                 LOG(INFO, "Client refernce key from SE: clientKeyPath=%s", client->cfg.clientKeyPath);
             }
-            free(seUID);
+
+            a71chInited = 1;
         }
     }
+
+    /* Use seUID if retrieved from SE */
+    if ( seUID != NULL ) {
+        if ( client->cfg.id != NULL ) {
+            if ( !strcmp(seUID, client->cfg.id)) {
+                LOG(INFO, "Specified id in config file matches with id of SE: %s", seUID);
+            } else {
+                LOG(WARN, "Ignoring specified id in config file: %s", client->cfg.id); 
+                LOG(WARN, "Using id of SE: %s", seUID);
+                free(client->cfg.id);
+            }
+        }
+        client->cfg.id = strdup(seUID);
+    }
+
+    /* sanity check for client id */
+    if ( client->cfg.id == NULL ) {
+        LOG(ERROR, "Client ID is NULL");
+        rc = SE_CERT_ERROR;
+        return rc;
+    }
+
+    int clientIdLen =  strlen(client->cfg.org) + strlen(client->cfg.type) + strlen(client->cfg.id) + 5;
+    char *clientId = malloc(clientIdLen);
+
+    if (isGateway)
+        sprintf(clientId, "g:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
+    else
+        sprintf(clientId, "d:%s:%s:%s", client->cfg.org, client->cfg.type, client->cfg.id);
+
+    LOG(INFO, "messagingUrl=%s", messagingUrl);
+    LOG(INFO, "hostname=%s", hostname);
+    LOG(INFO, "port=%d", port);
+    LOG(INFO, "clientId=%s", clientId);
+
+    /* create MQTT Client */
+    char connectionUrl[strlen(hostname) + 14];
+    if ( port == 1883 )
+       sprintf(connectionUrl, "tcp://%s:%d", hostname, port);
+    else
+       sprintf(connectionUrl, "ssl://%s:%d", hostname, port);
+
+    LOG(INFO, "connectionUrl=%s", connectionUrl);
 
     rc = MQTTClient_create(&mqttClient, connectionUrl, clientId, MQTTCLIENT_PERSISTENCE_NONE, NULL);
     if ( rc != 0 ) {
         LOG(WARN, "RC from MQTTClient_create:%d",rc);
-        goto exit;
+        return rc;
     }
 
     client->c = (void *)mqttClient;
@@ -197,11 +221,6 @@ int connectiotf(iotfclient  *client)
             char *connType = (useCerts)?"Client Side Certificates":"Secure Connection";
             LOG(INFO, "%s Connected to %s using %s\n", clientType, hostname, connType);
         }
-    }
-
-exit:
-    if (rc != 0) {
-        freeConfig(&client->cfg);
     }
 
     LOG(TRACE, "exit:: rc=%d", rc);
@@ -305,9 +324,9 @@ void setCommandHandler(iotfclient  *client, commandCallback handler)
     cb = handler;
 
     if (cb != NULL){
-        LOG(DEBUG, "Client ID %s : Registered callabck to process the arrived message", client->cfg.id);
+        LOG(INFO, "Client ID %s : Registered callabck to process the arrived message", client->cfg.id);
     } else {
-        LOG(DEBUG, "Client ID %s : Callabck not registered to process the arrived message", client->cfg.id);
+        LOG(INFO, "Client ID %s : Callabck not registered to process the arrived message", client->cfg.id);
     }
 
     LOG(TRACE, "exit::");
@@ -347,16 +366,33 @@ static int messageArrived(void *context, char *topicName, int topicLen, MQTTClie
 
         LOG(INFO, "Context:%x Topic:%s TopicLen=%d PayloadLen=%d Payload:%s", context, topic, topicLen, payloadlen, payload);
 
-        strtok(topic, "/");
-        strtok(NULL, "/");
+        char *type = NULL;
+        char *id = NULL;
+        char *commandName = NULL;
+        char *format = NULL;
 
-        char *type = strtok(NULL, "/");
-        strtok(NULL, "/");
-        char *id = strtok(NULL, "/");
-        strtok(NULL, "/");
-        char *commandName = strtok(NULL, "/");
-        strtok(NULL, "/");
-        char *format = strtok(NULL, "/");
+        if ( strncmp(topicName, "iot-2/cmd/", 10) == 0 ) {
+
+            strtok(topic, "/");
+            strtok(NULL, "/");
+            commandName = strtok(NULL, "/");
+            strtok(NULL, "/");
+            format = strtok(NULL, "/");
+
+        } else {
+
+            strtok(topic, "/");
+            strtok(NULL, "/");
+
+            type = strtok(NULL, "/");
+            strtok(NULL, "/");
+            id = strtok(NULL, "/");
+            strtok(NULL, "/");
+            commandName = strtok(NULL, "/");
+            strtok(NULL, "/");
+            format = strtok(NULL, "/");
+
+        }
 
         LOG(TRACE, "Calling registered callabck to process the arrived message");
 
