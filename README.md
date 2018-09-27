@@ -144,10 +144,7 @@ Edit sample device configuration file *device_a71ch.cfg* file in */opt/iotnxpimx
 ```
 org=<orgid>
 type=NXP-A71CH-D
-id=<your device id - returned by A71CH provisioning script>
 useClientCertificates=1
-clientCertPath=
-clientKeyPath=
 rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
 useNXPEngine=1
 useCertsFromSE=1
@@ -169,10 +166,7 @@ Edit sample gateway configuration file *gateway_a71ch.cfg* file in */opt/iotnxpi
 ```
 org=<orgid>
 type=NXP-A71CH-G
-id=<your gateway id - returned by A71CH provisioning script>
 useClientCertificates=1
-clientCertPath=
-clientKeyPath=
 rootCACertPath=/opt/iotnxpimxclient/certs/IoTFoundation.pem
 useNXPEngine=1
 useCertsFromSE=1

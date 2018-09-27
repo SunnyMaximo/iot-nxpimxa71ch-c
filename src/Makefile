@@ -39,7 +39,7 @@ CINCS = -I$(AXHOSTSW_DIR)/linux/A71CH/inc \
         -I$(SRCDIR)
 
 CFLAGS = $(CINCS) -fPIC -Wall -Wextra -O2 -g -DLINUX -DTGT_A71CH -DOPENSSL -DI2C
-LDFLAGS = -shared -lssl -lcrypto -lpaho-mqtt3cs -le2a71chi2c -lA71CH_i2c_imx
+LDFLAGS = -shared -lssl -lcrypto -lpaho-mqtt3cs -le2a71chi2c -lA71CH_i2c
 
 WIOTPLIB = libwiotpnxpimxa71ch.so
 TARGET_LIB = $(OBJDIR)/${WIOTPLIB}.${VERSION}
